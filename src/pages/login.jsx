@@ -15,7 +15,7 @@ const Login = () => {
 
   return (
     <div className="page" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-sidebar)' }}>
-      <div className="card animate-scale-in" style={{ width: '100%', maxWidth: '420px', margin: 'var(--space-4)' }}>
+      <div className="app-card animate-scale-in" style={{ width: '100%', maxWidth: '420px', margin: 'var(--space-4)', padding: '24px' }}>
         <div className="card-header" style={{ flexDirection: 'column', textAlign: 'center', padding: 'var(--space-8) var(--space-6) var(--space-4)' }}>
           <div style={{ background: 'var(--color-primary-50)', color: 'var(--color-primary)', width: '64px', height: '64px', borderRadius: 'var(--radius-full)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto var(--space-4)' }}>
             <GraduationCap size={32} />

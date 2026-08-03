@@ -25,7 +25,7 @@ const RegisterDirector = () => {
 
   return (
     <div className="page" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-app)', padding: 'var(--space-6)' }}>
-      <div className="card animate-scale-in" style={{ width: '100%', maxWidth: '540px' }}>
+      <div className="app-card animate-scale-in" style={{ width: '100%', maxWidth: '540px', padding: '24px' }}>
         <div className="card-header" style={{ flexDirection: 'column', textAlign: 'center', padding: 'var(--space-8) var(--space-6) var(--space-4)', borderBottom: 'none' }}>
           <div style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))', color: 'white', width: '72px', height: '72px', borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto var(--space-4)', boxShadow: 'var(--shadow-glow-success)' }}>
             <School size={36} />
