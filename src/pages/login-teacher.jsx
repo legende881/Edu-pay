@@ -1,35 +1,51 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GraduationCap, Key, Lock, LogIn, User } from 'lucide-react';
+import { GraduationCap, Mail, Lock, LogIn, User } from 'lucide-react';
+import { supabase } from '../supabaseClient';
 
 const LoginTeacher = () => {
   const navigate = useNavigate();
   const [teacherId, setTeacherId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    
-    const savedTeachers = localStorage.getItem('eduPayTeachers');
-    const teachers = savedTeachers ? JSON.parse(savedTeachers) : [];
-    
-    const teacher = teachers.find(t => t.id === teacherId && t.password === password);
-    
-    if (teacher) {
-      localStorage.setItem('currentUser', JSON.stringify({ role: 'teacher', id: teacher.id, name: teacher.name }));
+    setLoading(true);
+    setError('');
+
+    try {
+      // Direct lookup in teachers table
+      const { data: teacher, error: fetchError } = await supabase
+        .from('teachers')
+        .select('*')
+        .eq('id', teacherId)
+        .single();
+
+      if (fetchError || !teacher) {
+        throw new Error('Identifiant ou mot de passe incorrect.');
+      }
+
+      if (teacher.password !== password) {
+        throw new Error('Identifiant ou mot de passe incorrect.');
+      }
+
+      // Successful login
+      localStorage.setItem('currentUser', JSON.stringify({ 
+        role: 'teacher', 
+        id: teacher.id, 
+        name: teacher.name 
+      }));
+      
       navigate('/teacher-dashboard');
-      return;
+
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'Identifiant ou mot de passe incorrect.');
+    } finally {
+      setLoading(false);
     }
-    
-    // Démo fallback
-    if (teacherId === 'ENS-DEMO' && password === '1234') {
-      localStorage.setItem('currentUser', JSON.stringify({ role: 'teacher', id: 'ENS-DEMO', name: 'Enseignant Démo' }));
-      navigate('/teacher-dashboard');
-      return;
-    }
-    
-    setError('Identifiant ou mot de passe incorrect.');
   };
 
   return (
@@ -49,16 +65,16 @@ const LoginTeacher = () => {
           <form onSubmit={handleLogin} className="form-group" style={{ gap: 'var(--space-4)' }}>
             <div className="form-group" style={{ marginBottom: '16px' }}>
               <label className="form-label" style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '8px' }}>
-                ID Enseignant <span className="required" style={{color: 'var(--color-danger)'}}>*</span>
+                Identifiant (ID) <span className="required" style={{color: 'var(--color-danger)'}}>*</span>
               </label>
               <div className="search-input-wrapper" style={{ position: 'relative' }}>
-                <Key className="search-icon" size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <User className="search-icon" size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input
                   type="text"
                   className="search-input"
                   placeholder="Ex: ENS-001"
                   value={teacherId}
-                  onChange={(e) => setTeacherId(e.target.value.toUpperCase())}
+                  onChange={(e) => setTeacherId(e.target.value)}
                   required
                   style={{ width: '100%', padding: '12px 12px 12px 40px', border: '1px solid var(--border-light)', borderRadius: '8px' }}
                 />
@@ -89,8 +105,8 @@ const LoginTeacher = () => {
               </div>
             )}
 
-            <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', background: '#3B82F6', padding: '12px', borderRadius: '8px', color: 'white', border: 'none', fontWeight: 600, fontSize: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-              Se connecter <LogIn size={18} />
+            <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', background: '#3B82F6', padding: '12px', borderRadius: '8px', color: 'white', border: 'none', fontWeight: 600, fontSize: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', cursor: 'pointer' }} disabled={loading}>
+              {loading ? 'Connexion...' : <><LogIn size={18} /> Se connecter</>}
             </button>
           </form>
           

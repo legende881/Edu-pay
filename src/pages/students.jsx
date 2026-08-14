@@ -4,16 +4,31 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import AddStudentModal from '../components/AddStudentModal';
 import BulletinModal from '../components/BulletinModal';
+import { getFamiliesNested, saveFamiliesToSupabase, deleteFamilyFromSupabase, addTransaction } from '../supabaseService';
+import { supabase } from '../supabaseClient';
 
 
 const StudentsList = ({ initialActiveFamilyId }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // Initialisation du state avec localStorage
-  const [families, setFamilies] = useState(() => {
-    const saved = localStorage.getItem('eduPayFamilies');
-    return saved ? JSON.parse(saved) : [];
-  });
+  // Initialisation du state avec Supabase
+  const [families, setFamilies] = useState([]);
+  const [loadingFamilies, setLoadingFamilies] = useState(true);
+  const [globalSettings, setGlobalSettings] = useState({});
+  
+  useEffect(() => {
+    const fetchFam = async () => {
+      const data = await getFamiliesNested();
+      setFamilies(data);
+      setLoadingFamilies(false);
+      
+      const { data: settingsData } = await supabase.from('global_settings').select('data').eq('id', 1).single();
+      if (settingsData && settingsData.data) {
+        setGlobalSettings(settingsData.data);
+      }
+    };
+    fetchFam();
+  }, []);
   
   const [activeFamilyId, setActiveFamilyId] = useState(initialActiveFamilyId || null);
 
@@ -37,11 +52,32 @@ const StudentsList = ({ initialActiveFamilyId }) => {
   const [bulletinSettings, setBulletinSettings] = useState({});
 
   useEffect(() => {
-    const savedGrades = localStorage.getItem('eduPayGrades');
-    if (savedGrades) setAllGrades(JSON.parse(savedGrades));
-    
-    const savedSettings = localStorage.getItem('eduPayBulletinSettings');
-    if (savedSettings) setBulletinSettings(JSON.parse(savedSettings));
+    const fetchBulletinData = async () => {
+      const { data: gradesData } = await supabase.from('grades').select('*');
+      if (gradesData) {
+        const gradesObj = {};
+        gradesData.forEach(g => {
+          if (!gradesObj[g.student_id]) gradesObj[g.student_id] = {};
+          if (g.appreciation) {
+            try {
+              const parsed = JSON.parse(g.appreciation);
+              gradesObj[g.student_id][g.subject] = { int: parsed.int || '', dev: parsed.dev || '', comp: parsed.comp || '', coef: parsed.coef || '1', dev1: parsed.dev1 || '', dev2: parsed.dev2 || '', dev3: parsed.dev3 || '' };
+            } catch(e) {
+              gradesObj[g.student_id][g.subject] = { int: '', dev: '', comp: '', coef: '1', dev1: '', dev2: '', dev3: '' };
+            }
+          } else {
+            gradesObj[g.student_id][g.subject] = { int: '', dev: '', comp: '', coef: '1', dev1: '', dev2: '', dev3: '' };
+          }
+        });
+        setAllGrades(gradesObj);
+      }
+      
+      const { data: settingsData } = await supabase.from('global_settings').select('data').eq('id', 2).single();
+      if (settingsData && settingsData.data) {
+        setBulletinSettings(settingsData.data);
+      }
+    };
+    fetchBulletinData();
   }, [isBulletinModalOpen, activeMainTab]);
 
   // Reset le local storage pour ne pas rester bloqué sur le même élève après rafraîchissement
@@ -53,10 +89,12 @@ const StudentsList = ({ initialActiveFamilyId }) => {
   const [familyToDelete, setFamilyToDelete] = useState(null);
   const [editingFamily, setEditingFamily] = useState(null);
 
-  // Sauvegarde automatique dans localStorage à chaque modification
+  // Sauvegarde automatique dans Supabase à chaque modification
   useEffect(() => {
-    localStorage.setItem('eduPayFamilies', JSON.stringify(families));
-  }, [families]);
+    if (!loadingFamilies) {
+      saveFamiliesToSupabase(families);
+    }
+  }, [families, loadingFamilies]);
 
   const handleAddFamilies = (data) => {
     if (data.id) {
@@ -92,9 +130,18 @@ const StudentsList = ({ initialActiveFamilyId }) => {
       return;
     }
 
-    const savedGlobal = localStorage.getItem('eduPayGlobalSettings');
-    const globalSettings = savedGlobal ? JSON.parse(savedGlobal) : {};
-    const classTuitions = globalSettings.classTuitions || [];
+    const classTuitions = globalSettings.classTuitions || [
+      { name: 'CP1', amount: 120000 },
+      { name: 'CP2', amount: 120000 },
+      { name: 'CE1', amount: 120000 },
+      { name: 'CE2', amount: 120000 },
+      { name: 'CM1', amount: 120000 },
+      { name: 'CM2', amount: 120000 },
+      { name: '6ème', amount: 150000 },
+      { name: '5ème', amount: 150000 },
+      { name: '4ème', amount: 150000 },
+      { name: '3ème', amount: 150000 }
+    ];
 
     const getTuitionForGrade = (grade) => {
       const found = classTuitions.find(ct => ct.name.toLowerCase().trim() === grade.toLowerCase().trim());
@@ -112,7 +159,7 @@ const StudentsList = ({ initialActiveFamilyId }) => {
         deadline.setMonth(today.getMonth() + (i * 2) - 1); 
 
         return {
-          id: `tranche-${i+1}`,
+          id: `pay-${Date.now()}-${index}-${i}`,
           title: `Tranche ${i+1}`,
           amountExpected: amountPerTranche,
           amountPaid: 0,
@@ -220,8 +267,8 @@ const StudentsList = ({ initialActiveFamilyId }) => {
     doc.save(`Recu_${student.name.replace(/\s+/g, '_')}_${payment.title.replace(/\s+/g, '_')}.pdf`);
   };
 
-  const updatePayment = (familyId, studentId, trancheId, newAmountStr) => {
-    const newAmount = parseFloat(newAmountStr) || 0;
+  const updatePayment = (familyId, studentId, trancheId, addedAmountStr) => {
+    const addedAmount = parseFloat(addedAmountStr) || 0;
     
     setFamilies(families.map(family => {
       if (family.id !== familyId) return family;
@@ -231,10 +278,24 @@ const StudentsList = ({ initialActiveFamilyId }) => {
         
         const updatedPayments = student.payments.map(payment => {
           if (payment.id !== trancheId) return payment;
-          const isPaid = newAmount >= payment.amountExpected;
+          
+          const newTotalAmountPaid = payment.amountPaid + addedAmount;
+          const isPaid = newTotalAmountPaid >= payment.amountExpected;
+          const finalAmountPaid = newTotalAmountPaid > payment.amountExpected ? payment.amountExpected : newTotalAmountPaid;
+          
+          const diff = finalAmountPaid - payment.amountPaid;
+          if (diff > 0) {
+            addTransaction({
+              id: `txn-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+              payment_id: payment.id,
+              student_id: student.id,
+              amount: diff
+            });
+          }
+
           return {
             ...payment,
-            amountPaid: newAmount > payment.amountExpected ? payment.amountExpected : newAmount,
+            amountPaid: finalAmountPaid,
             isFullyPaid: isPaid
           };
         });
@@ -254,9 +315,21 @@ const StudentsList = ({ initialActiveFamilyId }) => {
         const updatedPayments = student.payments.map(payment => {
           if (payment.id !== trancheId) return payment;
           const isPaid = !payment.isFullyPaid;
+          const finalAmountPaid = isPaid ? payment.amountExpected : 0;
+          
+          const diff = finalAmountPaid - payment.amountPaid;
+          if (diff > 0) {
+            addTransaction({
+              id: `txn-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+              payment_id: payment.id,
+              student_id: student.id,
+              amount: diff
+            });
+          }
+
           return {
             ...payment,
-            amountPaid: isPaid ? payment.amountExpected : 0,
+            amountPaid: finalAmountPaid,
             isFullyPaid: isPaid
           };
         });
@@ -270,8 +343,9 @@ const StudentsList = ({ initialActiveFamilyId }) => {
     setFamilyToDelete(id);
   };
 
-  const handleDelete = () => {
+  const confirmDeleteFamily = async () => {
     if (familyToDelete) {
+      await deleteFamilyFromSupabase(familyToDelete);
       setFamilies(families.filter(f => f.id !== familyToDelete));
       setFamilyToDelete(null);
       // Si on était dans les détails de la famille supprimée, on retourne à la liste
@@ -315,7 +389,7 @@ const StudentsList = ({ initialActiveFamilyId }) => {
         </div>
 
         <div className="students-grid stagger-children" style={{ display: 'grid', gap: '24px', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))' }}>
-          {activeFamily.children.map(student => (
+          {[...activeFamily.children].sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' })).map(student => (
             <div key={student.id} className="student-card animate-fade-in-up">
               <div className="student-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                  <div className="student-info">
@@ -363,34 +437,32 @@ const StudentsList = ({ initialActiveFamilyId }) => {
                            <span className="tranche-amount">{payment.amountExpected.toLocaleString()} FCFA</span>
                         </div>
                         
-                        {!payment.isFullyPaid && (
-                          <div className="tranche-progress-section">
-                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', margin: '12px 0 6px', color: isOverdue ? '#B91C1C' : 'var(--text-muted)' }}>
-                               <span>Progression ({progressPercent}%)</span>
-                               <span>{payment.amountPaid.toLocaleString()} FCFA réglés</span>
-                             </div>
-                             <div className="progress-bar-bg" style={{ height: '8px', background: isOverdue ? '#FEE2E2' : 'var(--border-light)' }}>
-                               <div className="progress-bar-fill" style={{ width: `${progressPercent}%`, background: isOverdue ? '#EF4444' : 'var(--color-primary)' }}></div>
-                             </div>
-                             <div style={{ marginTop: '12px' }}>
-                               <button 
-                                 className="btn-outline"
-                                 style={{ padding: '8px 12px', fontSize: '13px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                                 onClick={() => setManualPaymentModal({
-                                   isOpen: true,
-                                   familyId: activeFamily.id,
-                                   studentId: student.id,
-                                   trancheId: payment.id,
-                                   studentName: student.name,
-                                   trancheTitle: payment.title,
-                                   amount: payment.amountPaid > 0 ? payment.amountPaid : ''
-                                 })}
-                               >
-                                 <Banknote size={16} /> Effectuer un paiement manuel
-                               </button>
-                             </div>
-                          </div>
-                        )}
+                        <div className="tranche-progress-section">
+                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', margin: '12px 0 6px', color: isOverdue ? '#B91C1C' : 'var(--text-muted)' }}>
+                             <span>Progression ({progressPercent}%)</span>
+                             <span>{payment.amountPaid.toLocaleString()} FCFA réglés</span>
+                           </div>
+                           <div className="progress-bar-bg" style={{ height: '8px', background: isOverdue ? '#FEE2E2' : 'var(--border-light)' }}>
+                             <div className="progress-bar-fill" style={{ width: `${progressPercent}%`, background: isOverdue ? '#EF4444' : 'var(--color-primary)' }}></div>
+                           </div>
+                           <div style={{ marginTop: '12px' }}>
+                             <button 
+                               className="btn-outline"
+                               style={{ padding: '8px 12px', fontSize: '13px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                               onClick={() => setManualPaymentModal({
+                                 isOpen: true,
+                                 familyId: activeFamily.id,
+                                 studentId: student.id,
+                                 trancheId: payment.id,
+                                 studentName: student.name,
+                                 trancheTitle: payment.title,
+                                 amount: ''
+                               })}
+                             >
+                               <Banknote size={16} /> Effectuer un paiement manuel
+                             </button>
+                           </div>
+                        </div>
 
                         {payment.amountPaid > 0 && (
                           <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px dashed var(--border-light)', display: 'flex', gap: '8px' }}>
@@ -438,7 +510,7 @@ const StudentsList = ({ initialActiveFamilyId }) => {
                 </p>
                 
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Montant à encaisser (FCFA)</label>
+                  <label className="form-label">Montant à ajouter (FCFA)</label>
                   <div className="search-input-wrapper">
                     <input 
                       type="number" 
@@ -454,7 +526,7 @@ const StudentsList = ({ initialActiveFamilyId }) => {
 
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button className="btn-outline" style={{ flex: 1 }} onClick={() => setManualPaymentModal({...manualPaymentModal, isOpen: false})}>Annuler</button>
-                <button className="btn-primary" style={{ flex: 1 }} onClick={handleManualPaymentSubmit}>Valider l'encaissement</button>
+                <button className="btn-primary" style={{ flex: 1 }} onClick={handleManualPaymentSubmit}>Ajouter l'encaissement</button>
               </div>
             </div>
           </div>
@@ -523,7 +595,7 @@ const StudentsList = ({ initialActiveFamilyId }) => {
              <p style={{ color: 'var(--text-muted)' }}>Aucun dossier enregistré pour le moment. Cliquez sur "Ajouter une famille" pour commencer.</p>
           </div>
         ) : (
-          families.map(family => (
+          [...families].sort((a,b) => a.parentName.localeCompare(b.parentName, 'fr', { sensitivity: 'base' })).map(family => (
             <div key={family.id} className="student-card animate-fade-in-up" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '24px', position: 'relative' }}>
               <div style={{ position: 'absolute', top: '24px', right: '24px', display: 'flex', gap: '8px' }}>
                 <button 
@@ -593,6 +665,7 @@ const StudentsList = ({ initialActiveFamilyId }) => {
         onClose={() => { setIsModalOpen(false); setEditingFamily(null); }} 
         onAdd={handleAddFamilies} 
         initialData={editingFamily}
+        globalSettings={globalSettings}
       />
 
       {familyToDelete && (
@@ -608,7 +681,7 @@ const StudentsList = ({ initialActiveFamilyId }) => {
               <button 
                 className="btn-primary" 
                 style={{ flex: 1, background: '#EF4444', border: 'none' }} 
-                onClick={handleDelete}
+                onClick={confirmDeleteFamily}
               >
                 Oui, supprimer
               </button>
@@ -635,7 +708,7 @@ const StudentsList = ({ initialActiveFamilyId }) => {
               </p>
               
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Montant à encaisser (FCFA)</label>
+                <label className="form-label">Montant à ajouter (FCFA)</label>
                 <div className="search-input-wrapper">
                   <input 
                     type="number" 
@@ -651,7 +724,7 @@ const StudentsList = ({ initialActiveFamilyId }) => {
 
             <div style={{ display: 'flex', gap: '12px' }}>
               <button className="btn-outline" style={{ flex: 1 }} onClick={() => setManualPaymentModal({...manualPaymentModal, isOpen: false})}>Annuler</button>
-              <button className="btn-primary" style={{ flex: 1 }} onClick={handleManualPaymentSubmit}>Valider l'encaissement</button>
+              <button className="btn-primary" style={{ flex: 1 }} onClick={handleManualPaymentSubmit}>Ajouter l'encaissement</button>
             </div>
           </div>
         </div>
@@ -706,7 +779,7 @@ const StudentsList = ({ initialActiveFamilyId }) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {families.flatMap(f => f.children).filter(c => c.grade === selectedBulletinClass).map(student => (
+                      {families.flatMap(f => f.children).filter(c => c.grade === selectedBulletinClass).sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' })).map(student => (
                         <React.Fragment key={student.id}>
                           <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
                             <td style={{ padding: '12px', fontWeight: 500 }}>{student.name}</td>
@@ -716,7 +789,7 @@ const StudentsList = ({ initialActiveFamilyId }) => {
                                 className="btn-outline btn-sm" 
                                 style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                                 onClick={() => {
-                                  if (selectedBulletinStudent?.id === student.id) {
+                                  if (selectedBulletinStudent?.id === student.id && isBulletinModalOpen) {
                                     setSelectedBulletinStudent(null);
                                     setIsBulletinModalOpen(false);
                                   } else {
@@ -725,7 +798,7 @@ const StudentsList = ({ initialActiveFamilyId }) => {
                                   }
                                 }}
                               >
-                                <FileText size={14} /> {selectedBulletinStudent?.id === student.id ? 'Masquer le bulletin' : 'Voir le bulletin'}
+                                <FileText size={14} /> {selectedBulletinStudent?.id === student.id && isBulletinModalOpen ? 'Masquer le bulletin' : 'Voir le bulletin'}
                               </button>
                             </td>
                           </tr>
@@ -734,7 +807,10 @@ const StudentsList = ({ initialActiveFamilyId }) => {
                               <td colSpan="3" style={{ padding: 0, background: '#F8FAFC' }}>
                                 <BulletinModal 
                                   isOpen={true} 
-                                  onClose={() => setIsBulletinModalOpen(false)}
+                                  onClose={() => {
+                                    setIsBulletinModalOpen(false);
+                                    setSelectedBulletinStudent(null);
+                                  }}
                                   student={selectedBulletinStudent}
                                   grades={selectedBulletinStudent ? allGrades[selectedBulletinStudent.id] : null}
                                   bulletinSettings={bulletinSettings}

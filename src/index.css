@@ -302,6 +302,10 @@ a { text-decoration: none; }
    ============================================ */
 
 /* Utility Classes for Responsive */
+.hamburger-btn {
+  display: none;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

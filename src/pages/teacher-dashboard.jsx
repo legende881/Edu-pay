@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, BookOpen, Users, Calendar, Clock, Edit3, Save } from 'lucide-react';
+import { supabase } from '../supabaseClient';
 
 const TeacherDashboard = () => {
   const navigate = useNavigate();
@@ -34,69 +35,74 @@ const TeacherDashboard = () => {
     }
     setCurrentUser(user);
 
-    const savedTeachers = localStorage.getItem('eduPayTeachers');
-    const teachers = savedTeachers ? JSON.parse(savedTeachers) : [];
-    const fullTeacher = teachers.find(t => t.id === user.id);
-    
-    if (fullTeacher) {
-      if (fullTeacher.classes) setAssignedClasses(fullTeacher.classes);
-      if (fullTeacher.subjects) setSubjects(fullTeacher.subjects);
-      if (fullTeacher.hours) setHours(fullTeacher.hours);
-      if (fullTeacher.assignments) setAssignments(fullTeacher.assignments);
-      if (fullTeacher.whatsapp) setWhatsapp(fullTeacher.whatsapp);
-      
-      if (fullTeacher.classes && fullTeacher.classes.length > 0) {
-        setSelectedClass(fullTeacher.classes[0]);
+    const fetchTeacher = async () => {
+      if (user.id === 'ENS-DEMO') {
+        setAssignedClasses(['6ème', '5ème', '4ème']);
+        setSubjects(['Mathématiques', 'Physique']);
+        setHours(['1ère heure', '2ème heure']);
+        setAssignments([
+          { class: '6ème', subject: 'Mathématiques', hour: '1ère heure' },
+          { class: '5ème', subject: 'Physique', hour: '2ème heure' }
+        ]);
+        setSelectedClass('6ème');
+        setSelectedSubject('Mathématiques');
+        return;
       }
-      if (fullTeacher.subjects && fullTeacher.subjects.length > 0) {
-        setSelectedSubject(fullTeacher.subjects[0] === 'Cours Primaire' ? 'Toutes les matières' : fullTeacher.subjects[0]);
+
+      const { data, error } = await supabase.from('teachers').select('*').eq('id', user.id);
+      if (data && data.length > 0) {
+        const fullTeacher = data[0];
+        if (fullTeacher.classes) setAssignedClasses(fullTeacher.classes);
+        if (fullTeacher.subjects) setSubjects(fullTeacher.subjects);
+        if (fullTeacher.hours) setHours(fullTeacher.hours);
+        if (fullTeacher.assignments) setAssignments(fullTeacher.assignments);
+        if (fullTeacher.whatsapp) setWhatsapp(fullTeacher.whatsapp);
+        
+        if (fullTeacher.classes && fullTeacher.classes.length > 0) {
+          setSelectedClass(fullTeacher.classes[0]);
+        }
+        if (fullTeacher.subjects && fullTeacher.subjects.length > 0) {
+          setSelectedSubject(fullTeacher.subjects[0] === 'Cours Primaire' ? 'Toutes les matières' : fullTeacher.subjects[0]);
+        }
       }
-    } else if (user.id === 'ENS-DEMO') {
-      setAssignedClasses(['6ème', '5ème', '4ème']);
-      setSubjects(['Mathématiques', 'Physique']);
-      setHours(['1ère heure', '2ème heure']);
-      setAssignments([
-        { class: '6ème', subject: 'Mathématiques', hour: '1ère heure' },
-        { class: '5ème', subject: 'Physique', hour: '2ème heure' }
-      ]);
-      setSelectedClass('6ème');
-      setSelectedSubject('Mathématiques');
-    }
+    };
+    fetchTeacher();
   }, [navigate]);
 
   // Load students and grades when class changes
   useEffect(() => {
     if (!selectedClass || !selectedSubject) return;
 
-    // Load students
-    const savedFamilies = localStorage.getItem('eduPayFamilies');
-    const families = savedFamilies ? JSON.parse(savedFamilies) : [];
-    
-    let classStudents = [];
-    families.forEach(f => {
-      if (f.children) {
-        f.children.forEach(child => {
-          if (child.grade === selectedClass) {
-            classStudents.push(child);
+    const fetchClassStudentsAndGrades = async () => {
+      const { data: classStudents } = await supabase.from('students').select('*').eq('grade', selectedClass);
+      
+      if (classStudents) {
+        // Sort students alphabetically
+        classStudents.sort((a,b) => a.name.localeCompare(b.name));
+        setStudentsList(classStudents);
+
+        const { data: savedGrades } = await supabase.from('grades').select('*').eq('subject', selectedSubject);
+        
+        let currentGrades = {};
+        classStudents.forEach(stu => {
+          const studentGrade = savedGrades ? savedGrades.find(g => g.student_id === stu.id) : null;
+          if (studentGrade && studentGrade.appreciation) {
+            try {
+              const parsed = JSON.parse(studentGrade.appreciation);
+              currentGrades[stu.id] = { id: studentGrade.id, int: parsed.int || '', dev: parsed.dev || '', comp: parsed.comp || '', coef: parsed.coef || '1', dev1: parsed.dev1 || '', dev2: parsed.dev2 || '', dev3: parsed.dev3 || '' };
+            } catch (e) {
+              currentGrades[stu.id] = { id: studentGrade.id, int: '', dev: '', comp: '', coef: '1', dev1: '', dev2: '', dev3: '' };
+            }
+          } else if (studentGrade) {
+            currentGrades[stu.id] = { id: studentGrade.id, int: '', dev: '', comp: '', coef: '1', dev1: '', dev2: '', dev3: '' };
+          } else {
+            currentGrades[stu.id] = { int: '', dev: '', comp: '', coef: '1', dev1: '', dev2: '', dev3: '' };
           }
         });
+        setGrades(currentGrades);
       }
-    });
-    setStudentsList(classStudents);
-
-    // Load existing grades
-    const savedGrades = localStorage.getItem('eduPayGrades');
-    const allGrades = savedGrades ? JSON.parse(savedGrades) : {};
-    
-    let currentGrades = {};
-    classStudents.forEach(stu => {
-      if (allGrades[stu.id] && allGrades[stu.id][selectedSubject]) {
-        currentGrades[stu.id] = allGrades[stu.id][selectedSubject];
-      } else {
-        currentGrades[stu.id] = { int: '', dev: '', comp: '', coef: '1' };
-      }
-    });
-    setGrades(currentGrades);
+    };
+    fetchClassStudentsAndGrades();
   }, [selectedClass, selectedSubject]);
 
   const handleGradeChange = (studentId, type, value) => {
@@ -109,19 +115,45 @@ const TeacherDashboard = () => {
     }));
   };
 
-  const handleSaveGrades = () => {
-    const savedGrades = localStorage.getItem('eduPayGrades');
-    const allGrades = savedGrades ? JSON.parse(savedGrades) : {};
+  const handleSaveGrades = async () => {
+    setSaveMessage('');
+    for (const stu of studentsList) {
+      const g = grades[stu.id];
+      const payload = {
+        student_id: stu.id,
+        subject: selectedSubject,
+        appreciation: JSON.stringify({
+          int: g?.int || '',
+          dev: g?.dev || '',
+          comp: g?.comp || '',
+          coef: g?.coef || '1',
+          dev1: g?.dev1 || '',
+          dev2: g?.dev2 || '',
+          dev3: g?.dev3 || ''
+        })
+      };
+
+      if (g && g.id) {
+        payload.id = g.id;
+        await supabase.from('grades').update(payload).eq('id', g.id);
+      } else {
+        const { data } = await supabase.from('grades').insert([payload]).select();
+        if (data && data.length > 0) {
+          grades[stu.id].id = data[0].id;
+        }
+      }
+    }
     
-    studentsList.forEach(stu => {
-      if (!allGrades[stu.id]) allGrades[stu.id] = {};
-      allGrades[stu.id][selectedSubject] = grades[stu.id];
-    });
-    
-    localStorage.setItem('eduPayGrades', JSON.stringify(allGrades));
     setSaveMessage('Notes enregistrées avec succès !');
     setTimeout(() => setSaveMessage(''), 3000);
   };
+
+  const isCollege = (grade) => {
+    if (!grade) return false;
+    const g = grade.toLowerCase();
+    return g.includes("6ème") || g.includes("5ème") || g.includes("4ème") || g.includes("3ème") || g.includes("6e") || g.includes("5e") || g.includes("4e") || g.includes("3e");
+  };
+  const isCollegeClass = isCollege(selectedClass);
 
   if (!currentUser) return null;
 
@@ -306,34 +338,89 @@ const TeacherDashboard = () => {
                       />
                     </div>
                     
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="form-label">Note d'interrogation (/20)</label>
-                      <input 
-                        type="number" max="20" min="0" step="0.25" className="search-input" 
-                        value={grades[selectedStudentId]?.int || ''}
-                        onChange={(e) => handleGradeChange(selectedStudentId, 'int', e.target.value)}
-                      />
-                    </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="form-label">Note de devoir (/20)</label>
-                      <input 
-                        type="number" max="20" min="0" step="0.25" className="search-input" 
-                        value={grades[selectedStudentId]?.dev || ''}
-                        onChange={(e) => handleGradeChange(selectedStudentId, 'dev', e.target.value)}
-                      />
-                    </div>
-                    
-                    <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
-                      <label className="form-label">Moyenne de classe (Calculée automatiquement)</label>
-                      <input 
-                        type="text" disabled className="search-input" style={{ background: '#F8FAFC', fontWeight: 'bold' }}
-                        value={
-                          grades[selectedStudentId]?.int && grades[selectedStudentId]?.dev
-                          ? ((parseFloat(grades[selectedStudentId].int) + parseFloat(grades[selectedStudentId].dev)) / 2).toFixed(2)
-                          : ''
-                        }
-                      />
-                    </div>
+                    {!isCollegeClass ? (
+                      <>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label">Note d'interrogation (/20)</label>
+                          <input 
+                            type="number" max="20" min="0" step="0.25" className="search-input" 
+                            value={grades[selectedStudentId]?.int || ''}
+                            onChange={(e) => handleGradeChange(selectedStudentId, 'int', e.target.value)}
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label">Note de devoir (/20)</label>
+                          <input 
+                            type="number" max="20" min="0" step="0.25" className="search-input" 
+                            value={grades[selectedStudentId]?.dev || ''}
+                            onChange={(e) => handleGradeChange(selectedStudentId, 'dev', e.target.value)}
+                          />
+                        </div>
+                        
+                        <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
+                          <label className="form-label">Moyenne de classe (Calculée automatiquement)</label>
+                          <input 
+                            type="text" disabled className="search-input" style={{ background: '#F8FAFC', fontWeight: 'bold' }}
+                            value={
+                              (() => {
+                                const int = grades[selectedStudentId]?.int ? parseFloat(grades[selectedStudentId].int) : null;
+                                const dev = grades[selectedStudentId]?.dev ? parseFloat(grades[selectedStudentId].dev) : null;
+                                if (int !== null && dev !== null) return ((int + dev) / 2).toFixed(2);
+                                if (int !== null) return int.toFixed(2);
+                                if (dev !== null) return dev.toFixed(2);
+                                return '';
+                              })()
+                            }
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label">Devoir 1 (/20)</label>
+                          <input 
+                            type="number" max="20" min="0" step="0.25" className="search-input" 
+                            value={grades[selectedStudentId]?.dev1 || ''}
+                            onChange={(e) => handleGradeChange(selectedStudentId, 'dev1', e.target.value)}
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label">Devoir 2 (/20)</label>
+                          <input 
+                            type="number" max="20" min="0" step="0.25" className="search-input" 
+                            value={grades[selectedStudentId]?.dev2 || ''}
+                            onChange={(e) => handleGradeChange(selectedStudentId, 'dev2', e.target.value)}
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label">Devoir 3 (/20)</label>
+                          <input 
+                            type="number" max="20" min="0" step="0.25" className="search-input" 
+                            value={grades[selectedStudentId]?.dev3 || ''}
+                            onChange={(e) => handleGradeChange(selectedStudentId, 'dev3', e.target.value)}
+                          />
+                        </div>
+
+                        <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
+                          <label className="form-label">Moyenne de devoirs (Calculée automatiquement)</label>
+                          <input 
+                            type="text" disabled className="search-input" style={{ background: '#F8FAFC', fontWeight: 'bold' }}
+                            value={
+                              (() => {
+                                const d1 = grades[selectedStudentId]?.dev1 ? parseFloat(grades[selectedStudentId].dev1) : null;
+                                const d2 = grades[selectedStudentId]?.dev2 ? parseFloat(grades[selectedStudentId].dev2) : null;
+                                const d3 = grades[selectedStudentId]?.dev3 ? parseFloat(grades[selectedStudentId].dev3) : null;
+                                const validDevs = [d1, d2, d3].filter(d => d !== null);
+                                if (validDevs.length > 0) {
+                                  return (validDevs.reduce((a, b) => a + b, 0) / validDevs.length).toFixed(2);
+                                }
+                                return '';
+                              })()
+                            }
+                          />
+                        </div>
+                      </>
+                    )}
 
                     <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
                       <label className="form-label">Note de composition (/20)</label>
@@ -349,9 +436,29 @@ const TeacherDashboard = () => {
                       <input 
                         type="text" disabled className="search-input" style={{ background: '#F8FAFC', fontWeight: 'bold', color: 'var(--color-primary)' }}
                         value={
-                          grades[selectedStudentId]?.int && grades[selectedStudentId]?.dev && grades[selectedStudentId]?.comp
-                          ? ((((parseFloat(grades[selectedStudentId].int) + parseFloat(grades[selectedStudentId].dev)) / 2) + parseFloat(grades[selectedStudentId].comp)) / 2).toFixed(2)
-                          : ''
+                          (() => {
+                            const comp = grades[selectedStudentId]?.comp ? parseFloat(grades[selectedStudentId].comp) : null;
+                            let moyClasse = null;
+
+                            if (!isCollegeClass) {
+                              const int = grades[selectedStudentId]?.int ? parseFloat(grades[selectedStudentId].int) : null;
+                              const dev = grades[selectedStudentId]?.dev ? parseFloat(grades[selectedStudentId].dev) : null;
+                              if (int !== null && dev !== null) moyClasse = (int + dev) / 2;
+                              else if (int !== null) moyClasse = int;
+                              else if (dev !== null) moyClasse = dev;
+                            } else {
+                              const d1 = grades[selectedStudentId]?.dev1 ? parseFloat(grades[selectedStudentId].dev1) : null;
+                              const d2 = grades[selectedStudentId]?.dev2 ? parseFloat(grades[selectedStudentId].dev2) : null;
+                              const d3 = grades[selectedStudentId]?.dev3 ? parseFloat(grades[selectedStudentId].dev3) : null;
+                              const validDevs = [d1, d2, d3].filter(d => d !== null);
+                              if (validDevs.length > 0) moyClasse = validDevs.reduce((a, b) => a + b, 0) / validDevs.length;
+                            }
+                            
+                            if (moyClasse !== null && comp !== null) return ((moyClasse + comp) / 2).toFixed(2);
+                            if (moyClasse !== null) return moyClasse.toFixed(2);
+                            if (comp !== null) return comp.toFixed(2);
+                            return '';
+                          })()
                         }
                       />
                     </div>
@@ -366,6 +473,67 @@ const TeacherDashboard = () => {
               ) : (
                 <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', background: '#F8FAFC', borderRadius: '8px', border: '1px dashed var(--border-light)' }}>
                   Veuillez sélectionner une classe, une matière et un élève pour commencer la saisie.
+                </div>
+              )}
+
+              {selectedClass && selectedSubject && studentsList.length > 0 && (
+                <div className="app-card animate-fade-in-up" style={{ marginTop: '24px' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', marginBottom: '16px', borderBottom: '1px solid var(--border-light)', paddingBottom: '16px' }}>Récapitulatif des notes ({selectedSubject})</h3>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', textAlign: 'left' }}>
+                      <thead>
+                        <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                          <th style={{ padding: '12px', fontWeight: 600, color: '#475569' }}>Élève</th>
+                          {!isCollegeClass ? (
+                            <>
+                              <th style={{ padding: '12px', fontWeight: 600, color: '#475569' }}>Int.</th>
+                              <th style={{ padding: '12px', fontWeight: 600, color: '#475569' }}>Dev.</th>
+                            </>
+                          ) : (
+                            <>
+                              <th style={{ padding: '12px', fontWeight: 600, color: '#475569' }}>Dev. 1</th>
+                              <th style={{ padding: '12px', fontWeight: 600, color: '#475569' }}>Dev. 2</th>
+                              <th style={{ padding: '12px', fontWeight: 600, color: '#475569' }}>Dev. 3</th>
+                            </>
+                          )}
+                          <th style={{ padding: '12px', fontWeight: 600, color: '#475569' }}>Comp.</th>
+                          <th style={{ padding: '12px', fontWeight: 600, color: '#475569', textAlign: 'center' }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {studentsList.map((stu) => (
+                          <tr key={stu.id} style={{ borderBottom: '1px solid #E2E8F0', background: selectedStudentId === stu.id ? '#EFF6FF' : 'white' }}>
+                            <td style={{ padding: '12px', fontWeight: 500 }}>{stu.name}</td>
+                            {!isCollegeClass ? (
+                              <>
+                                <td style={{ padding: '12px' }}>{grades[stu.id]?.int || '-'}</td>
+                                <td style={{ padding: '12px' }}>{grades[stu.id]?.dev || '-'}</td>
+                              </>
+                            ) : (
+                              <>
+                                <td style={{ padding: '12px' }}>{grades[stu.id]?.dev1 || '-'}</td>
+                                <td style={{ padding: '12px' }}>{grades[stu.id]?.dev2 || '-'}</td>
+                                <td style={{ padding: '12px' }}>{grades[stu.id]?.dev3 || '-'}</td>
+                              </>
+                            )}
+                            <td style={{ padding: '12px' }}>{grades[stu.id]?.comp || '-'}</td>
+                            <td style={{ padding: '12px', textAlign: 'center' }}>
+                              <button 
+                                className="btn-outline btn-sm" 
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '4px 8px', borderColor: 'var(--border-light)' }}
+                                onClick={() => {
+                                  setSelectedStudentId(stu.id);
+                                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                                }}
+                              >
+                                <Edit3 size={14} /> Éditer
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>

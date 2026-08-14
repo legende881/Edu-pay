@@ -1,28 +1,31 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/login';
 import Dashboard from './pages/dashboard';
-import RegisterDirector from './pages/register-director';
-import LoginParent from './pages/login-parent';
+import Students from './pages/students';
+import Payments from './pages/payments';
 import ParentDashboard from './pages/parent-dashboard';
-import LoginTeacher from './pages/login-teacher';
 import TeacherDashboard from './pages/teacher-dashboard';
+import ParentLogin from './pages/login-parent';
+import TeacherLogin from './pages/login-teacher';
+import RegisterDirector from './pages/register-director';
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/login/parent" element={<ParentLogin />} />
+        <Route path="/login/teacher" element={<TeacherLogin />} />
         <Route path="/register/director" element={<RegisterDirector />} />
-        <Route path="/login/parent" element={<LoginParent />} />
-        <Route path="/parent-dashboard" element={<ParentDashboard />} />
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/login/teacher" element={<LoginTeacher />} />
+        <Route path="/students" element={<Students />} />
+        <Route path="/payments" element={<Payments />} />
+        <Route path="/parent-dashboard" element={<ParentDashboard />} />
         <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
-        {/* Les autres routes seront ajoutées ici au fur et à mesure */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 

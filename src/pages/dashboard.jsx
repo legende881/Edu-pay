@@ -1,57 +1,39 @@
-import React, { useState } from 'react';
-import { DollarSign, AlertCircle, Users, Activity, TrendingUp, Bell, Search, Lock, Unlock, ChevronDown, Settings, LogOut, Eye, Menu, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { DollarSign, AlertCircle, Users, Activity, TrendingUp, Bell, Search, Lock, Unlock, ChevronDown, Settings, LogOut, Eye, Menu, X, Calendar, Crown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import StudentsList from './students';
+import PaymentsView from './payments';
+import { supabase } from '../supabaseClient';
+import { getFamiliesNested, getTransactions } from '../supabaseService';
 
 const SettingsPlan = () => {
-  const [defaultTranches, setDefaultTranches] = useState(() => {
-    const saved = localStorage.getItem('eduPayGlobalSettings');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return parsed.defaultTranches || '3';
-    }
-    return '3';
-  });
-  
-  const [chatNumber, setChatNumber] = useState(() => {
-    const saved = localStorage.getItem('eduPayGlobalSettings');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return parsed.chatNumber || '+22890000000';
-    }
-    return '+22890000000';
-  });
+  const [defaultTranches, setDefaultTranches] = useState('3');
+  const [chatNumber, setChatNumber] = useState('+22890000000');
+  const [yasNumber, setYasNumber] = useState('');
+  const [floozNumber, setFloozNumber] = useState('');
+  const [classTuitions, setClassTuitions] = useState([
+    { id: 1, name: 'CP1', amount: 120000 },
+    { id: 2, name: 'CE1', amount: 120000 },
+    { id: 3, name: '6ème', amount: 150000 }
+  ]);
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const [yasNumber, setYasNumber] = useState(() => {
-    const saved = localStorage.getItem('eduPayGlobalSettings');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return parsed.yasNumber || '';
-    }
-    return '';
-  });
-
-  const [floozNumber, setFloozNumber] = useState(() => {
-    const saved = localStorage.getItem('eduPayGlobalSettings');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return parsed.floozNumber || '';
-    }
-    return '';
-  });
-
-  const [classTuitions, setClassTuitions] = useState(() => {
-    const saved = localStorage.getItem('eduPayGlobalSettings');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed.classTuitions && parsed.classTuitions.length > 0) return parsed.classTuitions;
-    }
-    return [
-      { id: 1, name: 'CP1', amount: 120000 },
-      { id: 2, name: 'CE1', amount: 120000 },
-      { id: 3, name: '6ème', amount: 150000 }
-    ];
-  });
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const { data, error } = await supabase.from('global_settings').select('data').eq('id', 1).single();
+      if (data && data.data) {
+        const parsed = data.data;
+        if (parsed.defaultTranches) setDefaultTranches(parsed.defaultTranches);
+        if (parsed.chatNumber) setChatNumber(parsed.chatNumber);
+        if (parsed.yasNumber) setYasNumber(parsed.yasNumber);
+        if (parsed.floozNumber) setFloozNumber(parsed.floozNumber);
+        if (parsed.classTuitions && parsed.classTuitions.length > 0) setClassTuitions(parsed.classTuitions);
+      }
+      setLoading(false);
+    };
+    fetchSettings();
+  }, []);
 
   const handleTuitionChange = (id, field, value) => {
     setClassTuitions(classTuitions.map(ct => ct.id === id ? { ...ct, [field]: value } : ct));
@@ -65,18 +47,20 @@ const SettingsPlan = () => {
     setClassTuitions(classTuitions.filter(ct => ct.id !== id));
   };
 
-  const [message, setMessage] = useState('');
-
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    const saved = localStorage.getItem('eduPayGlobalSettings');
-    const settings = saved ? JSON.parse(saved) : {};
+    
+    const { data: currentData } = await supabase.from('global_settings').select('data').eq('id', 1).single();
+    const settings = currentData?.data || {};
+    
     settings.defaultTranches = defaultTranches;
     settings.chatNumber = chatNumber;
     settings.yasNumber = yasNumber;
     settings.floozNumber = floozNumber;
     settings.classTuitions = classTuitions;
-    localStorage.setItem('eduPayGlobalSettings', JSON.stringify(settings));
+    
+    await supabase.from('global_settings').upsert([{ id: 1, data: settings }]);
+    
     setMessage('Les paramètres ont été mis à jour avec succès.');
     setTimeout(() => setMessage(''), 3000);
   };
@@ -210,21 +194,31 @@ const SettingsPlan = () => {
 };
 
 const SettingsBulletin = () => {
-  const [bulletinSettings, setBulletinSettings] = useState(() => {
-    const saved = localStorage.getItem('eduPayBulletinSettings');
-    if (saved) return JSON.parse(saved);
-    return {
-      schoolName: 'LYCÉE LEGBASSITO',
-      motto: 'Travail - Liberté - Patrie',
-      academicYear: '2025-2026',
-      logoUrl: '',
-      leftHeader: "MINISTERE DE L'EDUCATION NATIONALE\n-----------------\nDIRECTION REGIONALE DE L'EDUCATION\n-----------------\nINSPECTION DE L'ENSEIGNEMENT SECONDAIRE\n-----------------\nGENERAL ADJOINTIVE",
-      phoneNumber: '',
-      scientificSubjects: 'Mathématiques, Physique-Chimie, SVT',
-      literarySubjects: 'Philosophie, Anglais, Français, Histoire-Géo, ECM, Allemand, Espagnol',
-      optionalSubjects: 'EPS'
+  const defaultSettings = {
+    schoolName: 'LYCÉE LEGBASSITO',
+    motto: 'Travail - Liberté - Patrie',
+    academicYear: '2025-2026',
+    logoUrl: '',
+    leftHeader: "MINISTERE DE L'EDUCATION NATIONALE\n-----------------\nDIRECTION REGIONALE DE L'EDUCATION\n-----------------\nINSPECTION DE L'ENSEIGNEMENT SECONDAIRE\n-----------------\nGENERAL ADJOINTIVE",
+    phoneNumber: '',
+    scientificSubjects: 'Mathématiques, Physique-Chimie, SVT',
+    literarySubjects: 'Philosophie, Anglais, Français, Histoire-Géo, ECM, Allemand, Espagnol',
+    optionalSubjects: 'EPS'
+  };
+
+  const [bulletinSettings, setBulletinSettings] = useState(defaultSettings);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const { data, error } = await supabase.from('global_settings').select('data').eq('id', 2).single();
+      if (data && data.data) {
+        setBulletinSettings({ ...defaultSettings, ...data.data });
+      }
+      setLoading(false);
     };
-  });
+    fetchSettings();
+  }, []);
   
   const [message, setMessage] = useState('');
 
@@ -232,9 +226,9 @@ const SettingsBulletin = () => {
     setBulletinSettings({ ...bulletinSettings, [field]: value });
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    localStorage.setItem('eduPayBulletinSettings', JSON.stringify(bulletinSettings));
+    await supabase.from('global_settings').upsert([{ id: 2, data: bulletinSettings }]);
     setMessage('Paramètres du bulletin mis à jour avec succès.');
     setTimeout(() => setMessage(''), 3000);
   };
@@ -340,59 +334,63 @@ const SettingsPersonal = () => {
   const currentUser = savedUser ? JSON.parse(savedUser) : { role: 'director' };
   const isDirector = currentUser.role === 'director';
 
-  const [adminsList, setAdminsList] = useState(() => {
-    const saved = localStorage.getItem('eduPayAdmins');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [adminsList, setAdminsList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchAdmins = async () => {
+      const { data, error } = await supabase.from('admins').select('*');
+      if (data) setAdminsList(data);
+      setLoading(false);
+    };
+    fetchAdmins();
+  }, []);
   
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [newAdminPassword, setNewAdminPassword] = useState('');
   const [adminMessage, setAdminMessage] = useState('');
   
-  const [adminToEdit, setAdminToEdit] = useState(null); // { originalEmail, email, password }
-  const [adminToDelete, setAdminToDelete] = useState(null); // email string
+  const [adminToEdit, setAdminToEdit] = useState(null); // { originalEmail, email, password, id }
+  const [adminToDelete, setAdminToDelete] = useState(null); // id string
 
-  const handleAddAdmin = (e) => {
+  const handleAddAdmin = async (e) => {
     e.preventDefault();
-    let updatedAdmins = [...adminsList];
-    
-    if (updatedAdmins.find(a => a.email === newAdminEmail)) {
+    if (adminsList.find(a => a.username === newAdminEmail)) {
       setAdminMessage('Cet administrateur existe déjà.');
       setTimeout(() => setAdminMessage(''), 3000);
       return;
     }
-    updatedAdmins.push({ email: newAdminEmail, password: newAdminPassword, role: 'admin' });
-    setAdminMessage('Administrateur ajouté avec succès.');
-    
-    localStorage.setItem('eduPayAdmins', JSON.stringify(updatedAdmins));
-    setAdminsList(updatedAdmins);
-    
-    setNewAdminEmail('');
-    setNewAdminPassword('');
+
+    const { data, error } = await supabase.from('admins').insert([
+      { username: newAdminEmail, password: newAdminPassword }
+    ]).select();
+
+    if (!error && data) {
+      setAdminsList([...adminsList, data[0]]);
+      setAdminMessage('Administrateur ajouté avec succès.');
+      setNewAdminEmail('');
+      setNewAdminPassword('');
+    } else {
+      setAdminMessage('Erreur lors de l\'ajout.');
+    }
     setTimeout(() => setAdminMessage(''), 3000);
   };
 
-  const saveEditedAdmin = (e) => {
+  const saveEditedAdmin = async (e) => {
     e.preventDefault();
-    let updatedAdmins = [...adminsList];
-    const index = updatedAdmins.findIndex(a => a.email === adminToEdit.originalEmail);
-    if (index !== -1) {
-      if (adminToEdit.email !== adminToEdit.originalEmail && updatedAdmins.find(a => a.email === adminToEdit.email)) {
-        alert('Cet email est déjà utilisé.');
-        return;
-      }
-      updatedAdmins[index] = { ...updatedAdmins[index], email: adminToEdit.email, password: adminToEdit.password };
-      localStorage.setItem('eduPayAdmins', JSON.stringify(updatedAdmins));
-      setAdminsList(updatedAdmins);
+    const { error } = await supabase.from('admins').update({ username: adminToEdit.email, password: adminToEdit.password }).eq('id', adminToEdit.id);
+    if (!error) {
+      setAdminsList(adminsList.map(a => a.id === adminToEdit.id ? { ...a, username: adminToEdit.email, password: adminToEdit.password } : a));
       setAdminToEdit(null);
     }
   };
 
-  const confirmDeleteAdmin = () => {
-    const updatedAdmins = adminsList.filter(a => a.email !== adminToDelete);
-    localStorage.setItem('eduPayAdmins', JSON.stringify(updatedAdmins));
-    setAdminsList(updatedAdmins);
-    setAdminToDelete(null);
+  const confirmDeleteAdmin = async () => {
+    const { error } = await supabase.from('admins').delete().eq('id', adminToDelete);
+    if (!error) {
+      setAdminsList(adminsList.filter(a => a.id !== adminToDelete));
+      setAdminToDelete(null);
+    }
   };
 
   return (
@@ -456,15 +454,15 @@ const SettingsPersonal = () => {
               {adminsList.map((admin, idx) => (
                 <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', border: '1px solid var(--border-light)', borderRadius: '8px', background: '#F8FAFC' }}>
                   <div>
-                    <div style={{ fontWeight: 500, color: 'var(--text-main)', marginBottom: '4px' }}>{admin.email}</div>
+                    <div style={{ fontWeight: 500, color: 'var(--text-main)', marginBottom: '4px' }}>{admin.username}</div>
                     <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Mot de passe : {admin.password}</div>
                   </div>
                   {isDirector && (
                     <div style={{ display: 'flex', gap: '12px' }}>
-                      <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }} onClick={() => setAdminToEdit({ originalEmail: admin.email, email: admin.email, password: admin.password })} title="Modifier">
+                      <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }} onClick={() => setAdminToEdit({ id: admin.id, email: admin.username, password: admin.password })} title="Modifier">
                         ✏️
                       </button>
-                      <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }} onClick={() => setAdminToDelete(admin.email)} title="Supprimer">
+                      <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }} onClick={() => setAdminToDelete(admin.id)} title="Supprimer">
                         🗑️
                       </button>
                     </div>
@@ -478,7 +476,7 @@ const SettingsPersonal = () => {
       {/* Edit Admin Modal */}
       {adminToEdit && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
-          <div className="card animate-scale-in" style={{ width: '400px', padding: '32px' }}>
+          <div className="app-card animate-scale-in" style={{ width: '400px', padding: '32px' }}>
             <h3 style={{ marginBottom: '24px' }}>Modifier l'administrateur</h3>
             <form onSubmit={saveEditedAdmin}>
               <div className="form-group" style={{ marginBottom: '16px' }}>
@@ -501,13 +499,13 @@ const SettingsPersonal = () => {
       {/* Delete Confirmation Modal */}
       {adminToDelete && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
-          <div className="card animate-scale-in" style={{ width: '400px', padding: '32px', textAlign: 'center' }}>
+          <div className="app-card animate-scale-in" style={{ width: '400px', padding: '32px', textAlign: 'center' }}>
             <div style={{ background: '#FEF2F2', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: '#EF4444' }}>
               <AlertCircle size={32} />
             </div>
             <h3 style={{ marginBottom: '16px' }}>Confirmer la suppression</h3>
             <p style={{ color: 'var(--text-muted)', marginBottom: '32px' }}>
-              Voulez-vous vraiment supprimer l'accès de <strong>{adminToDelete}</strong> ? Cette action est irréversible.
+              Voulez-vous vraiment supprimer cet accès ? Cette action est irréversible.
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button type="button" className="btn-outline" onClick={() => setAdminToDelete(null)}>Annuler</button>
@@ -521,16 +519,27 @@ const SettingsPersonal = () => {
 };
 
 const SettingsTeachers = () => {
-  const [teachers, setTeachers] = useState(() => {
-    const saved = localStorage.getItem('eduPayTeachers');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [teachers, setTeachers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTeachers = async () => {
+      const { data, error } = await supabase.from('teachers').select('*');
+      if (data) {
+        data.sort((a,b) => a.name.localeCompare(b.name));
+        setTeachers(data);
+      }
+      setLoading(false);
+    };
+    fetchTeachers();
+  }, []);
   
   const [newName, setNewName] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [assignments, setAssignments] = useState([]);
   const [currentClass, setCurrentClass] = useState('');
   const [currentSubject, setCurrentSubject] = useState('');
+  const [currentDay, setCurrentDay] = useState('');
   const [currentHour, setCurrentHour] = useState('');
   const [message, setMessage] = useState('');
   const [editingTeacherId, setEditingTeacherId] = useState(null);
@@ -550,7 +559,7 @@ const SettingsTeachers = () => {
     let text = `Bonjour ${teacher.name}, voici vos affectations :\n\n`;
     if (teacher.assignments && teacher.assignments.length > 0) {
       teacher.assignments.forEach(a => {
-        text += `- Classe: ${a.class} | Cours: ${a.subject === '-' ? 'Tous' : a.subject} | Heure: ${a.hour}\n`;
+        text += `- Classe: ${a.class} | Cours: ${a.subject === '-' ? 'Tous' : a.subject} | Jour: ${a.day === '-' ? 'Tous' : a.day} | Heure: ${a.hour}\n`;
       });
     } else {
       text += "(Aucune affectation précise)\n";
@@ -559,6 +568,10 @@ const SettingsTeachers = () => {
     
     return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
   };
+
+  const PREDEFINED_DAYS = [
+    'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'
+  ];
 
   const PREDEFINED_HOURS = [
     '1ère heure', '2ème heure', '3ème heure', '4ème heure', '5ème heure',
@@ -571,7 +584,7 @@ const SettingsTeachers = () => {
   ];
 
   const PREDEFINED_CLASSES = [
-    'CP1', 'CP2', 'CE1', 'CE2', 'CM1', 'CM2',
+    'CEI1', 'CEI2', 'CP1', 'CP2', 'CE1', 'CE2', 'CM1', 'CM2',
     '6ème', '5ème', '4ème', '3ème',
     'Seconde A', 'Seconde C', 'Seconde D',
     'Première A', 'Première C', 'Première D',
@@ -586,10 +599,12 @@ const SettingsTeachers = () => {
     setAssignments([...assignments, {
       class: currentClass,
       subject: currentSubject || '-',
+      day: currentDay || '-',
       hour: currentHour || '-'
     }]);
     setCurrentClass('');
     setCurrentSubject('');
+    setCurrentDay('');
     setCurrentHour('');
   };
 
@@ -597,19 +612,13 @@ const SettingsTeachers = () => {
     setAssignments(assignments.filter((_, i) => i !== index));
   };
 
-  const handleAddTeacher = (e) => {
+  const handleAddTeacher = async (e) => {
     e.preventDefault();
     if (!newName) return;
     
     let finalAssignments = [...assignments];
-    
-    // Auto-add if user filled the fields but forgot to click "+ Ajouter"
     if (currentClass) {
-      finalAssignments.push({
-        class: currentClass,
-        subject: currentSubject || '-',
-        hour: currentHour || '-'
-      });
+      finalAssignments.push({ class: currentClass, subject: currentSubject || '-', day: currentDay || '-', hour: currentHour || '-' });
     }
 
     if (finalAssignments.length === 0) {
@@ -619,26 +628,26 @@ const SettingsTeachers = () => {
     
     const uniqueClasses = [...new Set(finalAssignments.map(a => a.class))];
     const uniqueSubjects = [...new Set(finalAssignments.map(a => a.subject).filter(s => s !== '-'))];
+    const uniqueDays = [...new Set(finalAssignments.map(a => a.day).filter(d => d !== '-'))];
     const uniqueHours = [...new Set(finalAssignments.map(a => a.hour).filter(h => h !== '-'))];
 
-    let updatedTeachers;
-
     if (editingTeacherId) {
-      updatedTeachers = teachers.map(t => {
-        if (t.id === editingTeacherId) {
-          return {
-            ...t,
-            name: newName,
-            whatsapp: whatsapp,
-            assignments: finalAssignments,
-            classes: uniqueClasses,
-            subjects: uniqueSubjects,
-            hours: uniqueHours
-          };
-        }
-        return t;
-      });
-      setMessage(`Enseignant ${newName} mis à jour avec succès.`);
+      const { data, error } = await supabase.from('teachers').update({
+        name: newName,
+        whatsapp: whatsapp,
+        assignments: finalAssignments,
+        classes: uniqueClasses,
+        subjects: uniqueSubjects,
+        days: uniqueDays,
+        hours: uniqueHours
+      }).eq('id', editingTeacherId).select();
+
+      if (!error && data) {
+        let updated = teachers.map(t => t.id === editingTeacherId ? data[0] : t);
+        updated.sort((a,b) => a.name.localeCompare(b.name));
+        setTeachers(updated);
+        setMessage(`Enseignant ${newName} mis à jour avec succès.`);
+      }
     } else {
       const newId = `ENS-${String(teachers.length + 1).padStart(3, '0')}`;
       const newPassword = Math.floor(1000 + Math.random() * 9000).toString();
@@ -651,24 +660,28 @@ const SettingsTeachers = () => {
         assignments: finalAssignments,
         classes: uniqueClasses,
         subjects: uniqueSubjects,
-        hours: uniqueHours,
-        createdAt: new Date().toISOString()
+        days: uniqueDays,
+        hours: uniqueHours
       };
-      updatedTeachers = [...teachers, newTeacher];
-      setMessage(`Enseignant ajouté ! ID: ${newId} | Mdp: ${newPassword}`);
+      
+      const { data, error } = await supabase.from('teachers').insert([newTeacher]).select();
+      if (!error && data) {
+        let updated = [...teachers, data[0]];
+        updated.sort((a,b) => a.name.localeCompare(b.name));
+        setTeachers(updated);
+        setMessage(`Enseignant ajouté ! ID: ${newId} | Mdp: ${newPassword}`);
+      }
     }
-    
-    setTeachers(updatedTeachers);
-    localStorage.setItem('eduPayTeachers', JSON.stringify(updatedTeachers));
     
     setNewName('');
     setWhatsapp('');
     setAssignments([]);
     setCurrentClass('');
     setCurrentSubject('');
+    setCurrentDay('');
     setCurrentHour('');
     setEditingTeacherId(null);
-    setTimeout(() => setMessage(''), 10000); // 10 seconds to read
+    setTimeout(() => setMessage(''), 10000);
   };
 
   const handleEditTeacher = (teacher) => {
@@ -683,12 +696,13 @@ const SettingsTeachers = () => {
     setTeacherToDelete(teacher);
   };
 
-  const confirmDeleteTeacher = () => {
+  const confirmDeleteTeacher = async () => {
     if (teacherToDelete) {
-      const updatedTeachers = teachers.filter(t => t.id !== teacherToDelete.id);
-      setTeachers(updatedTeachers);
-      localStorage.setItem('eduPayTeachers', JSON.stringify(updatedTeachers));
-      setTeacherToDelete(null);
+      const { error } = await supabase.from('teachers').delete().eq('id', teacherToDelete.id);
+      if (!error) {
+        setTeachers(teachers.filter(t => t.id !== teacherToDelete.id));
+        setTeacherToDelete(null);
+      }
     }
   };
 
@@ -720,11 +734,18 @@ const SettingsTeachers = () => {
                   {PREDEFINED_CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <div style={{ flex: '1 1 150px' }}>
+              <div style={{ flex: '1 1 120px' }}>
                 <label style={{ display: 'block', fontSize: '12px', marginBottom: '4px', color: 'var(--text-muted)' }}>Cours (Opt.)</label>
                 <select className="search-input" value={currentSubject} onChange={e => setCurrentSubject(e.target.value)} style={{ width: '100%', padding: '8px' }}>
                   <option value="">Aucun</option>
                   {PREDEFINED_SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div style={{ flex: '1 1 120px' }}>
+                <label style={{ display: 'block', fontSize: '12px', marginBottom: '4px', color: 'var(--text-muted)' }}>Jour (Opt.)</label>
+                <select className="search-input" value={currentDay} onChange={e => setCurrentDay(e.target.value)} style={{ width: '100%', padding: '8px' }}>
+                  <option value="">Aucun</option>
+                  {PREDEFINED_DAYS.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
               <div style={{ flex: '1 1 120px' }}>
@@ -745,21 +766,23 @@ const SettingsTeachers = () => {
           {assignments.length > 0 && (
             <table style={{ width: '100%', fontSize: '13px', borderCollapse: 'collapse', border: '1px solid var(--border-light)' }}>
               <thead>
-                <tr style={{ background: '#F1F5F9', borderBottom: '1px solid #E2E8F0' }}>
-                  <th style={{ padding: '8px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Classe</th>
-                  <th style={{ padding: '8px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Cours</th>
-                  <th style={{ padding: '8px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Heure</th>
-                  <th style={{ padding: '8px', textAlign: 'center', fontWeight: 600, color: '#475569' }}>Action</th>
+                <tr style={{ background: 'var(--bg-app)', borderBottom: '1px solid #E2E8F0' }}>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Classe</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Cours</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Jour</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Heure</th>
+                  <th style={{ padding: '12px', textAlign: 'right', fontWeight: 600 }}>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {assignments.map((a, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid #E2E8F0', background: 'white' }}>
-                    <td style={{ padding: '8px' }}>{a.class}</td>
-                    <td style={{ padding: '8px' }}>{a.subject}</td>
-                    <td style={{ padding: '8px', color: a.hour === '-' ? '#94A3B8' : 'inherit' }}>{a.hour}</td>
-                    <td style={{ padding: '8px', textAlign: 'center' }}>
-                      <button type="button" onClick={() => handleRemoveAssignment(i)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer' }}>✕</button>
+                {assignments.map((assignment, index) => (
+                  <tr key={index} style={{ borderBottom: '1px solid var(--border-light)', background: 'white' }}>
+                    <td style={{ padding: '12px', color: 'var(--text-main)' }}>{assignment.class}</td>
+                    <td style={{ padding: '12px', color: 'var(--text-muted)' }}>{assignment.subject}</td>
+                    <td style={{ padding: '12px', color: 'var(--text-muted)' }}>{assignment.day}</td>
+                    <td style={{ padding: '12px', color: 'var(--text-muted)' }}>{assignment.hour}</td>
+                    <td style={{ padding: '12px', textAlign: 'right' }}>
+                      <button type="button" onClick={() => handleRemoveAssignment(index)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
                     </td>
                   </tr>
                 ))}
@@ -807,7 +830,7 @@ const SettingsTeachers = () => {
             </div>
           </div>
           <div style={{ display: 'grid', gap: '16px', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
-            {teachers.map((teacher) => (
+            {[...teachers].sort((a,b) => a.name.localeCompare(b.name)).map((teacher) => (
               <div key={teacher.id} style={{ padding: '16px', border: '1px solid var(--border-light)', borderRadius: '8px', background: '#F8FAFC' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
                   <div style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '16px' }}>{teacher.name}</div>
@@ -836,6 +859,7 @@ const SettingsTeachers = () => {
                       <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
                         <th style={{ padding: '6px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Classe</th>
                         <th style={{ padding: '6px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Cours</th>
+                        <th style={{ padding: '6px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Jour</th>
                         <th style={{ padding: '6px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Heure</th>
                       </tr>
                     </thead>
@@ -844,6 +868,7 @@ const SettingsTeachers = () => {
                         <tr key={i} style={{ borderBottom: '1px solid #E2E8F0', background: 'white' }}>
                           <td style={{ padding: '6px' }}>{a.class}</td>
                           <td style={{ padding: '6px', color: a.subject === '-' ? '#94A3B8' : 'inherit' }}>{a.subject === '-' ? 'Aucun' : a.subject}</td>
+                          <td style={{ padding: '6px', color: a.day === '-' ? '#94A3B8' : 'inherit' }}>{a.day === '-' ? 'Aucun' : a.day}</td>
                           <td style={{ padding: '6px', color: a.hour === '-' ? '#94A3B8' : 'inherit' }}>{a.hour}</td>
                         </tr>
                       ))}
@@ -907,7 +932,7 @@ const SettingsTeachers = () => {
               {teachers.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Aucun enseignant</div>
               ) : (
-                teachers.map(t => (
+                [...teachers].sort((a,b) => a.name.localeCompare(b.name)).map(t => (
                   <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', borderBottom: '1px solid var(--border-light)' }}>
                     <div>
                       <div style={{ fontWeight: 500 }}>{t.name}</div>
@@ -944,7 +969,7 @@ const SettingsTeachers = () => {
             </tr>
           </thead>
           <tbody>
-            {teachers.map(t => (
+            {[...teachers].sort((a,b) => a.name.localeCompare(b.name)).map(t => (
               <tr key={t.id}>
                 <td style={{ border: '1px solid black', padding: '8px', fontWeight: 'bold' }}>{t.name}</td>
                 <td style={{ border: '1px solid black', padding: '8px' }}>{t.whatsapp || 'N/A'}</td>
@@ -978,17 +1003,40 @@ const DashboardOverview = ({ stats, formatCurrency, onViewStudent, currentFamili
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotMessage, setForgotMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  
+  const [transactions, setTransactions] = useState([]);
+  const [historyDate, setHistoryDate] = useState(new Date().toISOString().split('T')[0]);
 
-  const handleUnlock = (e) => {
+  useEffect(() => {
+    const fetchHistory = async () => {
+      const data = await getTransactions();
+      setTransactions(data);
+    };
+    fetchHistory();
+  }, []);
+
+  const handleUnlock = async (e) => {
     e.preventDefault();
-    if (email === 'directeur@ecole.com' && password === '1234') {
-      setIsUnlocked(true);
-      setShowLogin(false);
-      setError('');
+    setLoading(true);
+    try {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (signInError) throw signInError;
+
+      if (data.user) {
+        setIsUnlocked(true);
+        setShowLogin(false);
+        setError('');
+        setResetMessage('');
+      }
+    } catch (err) {
+      setError('Identifiants incorrects.');
       setResetMessage('');
-    } else {
-      setError('Identifiants incorrects. Essayez directeur@ecole.com / 1234');
-      setResetMessage('');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1028,38 +1076,34 @@ const DashboardOverview = ({ stats, formatCurrency, onViewStudent, currentFamili
           </div>
         )}
 
-        <div className="premium-financial-grid stagger-children" style={{ filter: !isUnlocked ? 'blur(6px)' : 'none', transition: 'filter 0.3s ease', opacity: !isUnlocked ? 0.7 : 1, userSelect: !isUnlocked ? 'none' : 'auto' }}>
-          <div className="premium-card success-gradient">
-            <div className="card-glass">
-              <div className="card-top">
-                 <div className="icon-wrapper"><DollarSign size={24} color="#059669" /></div>
-                 <span className="trend-badge positive">↗ +15.3%</span>
+        <div className="students-grid stagger-children" style={{ filter: !isUnlocked ? 'blur(6px)' : 'none', transition: 'filter 0.3s ease', opacity: !isUnlocked ? 0.7 : 1, userSelect: !isUnlocked ? 'none' : 'auto', marginBottom: '32px' }}>
+          <div className="app-card">
+            <div className="card-top">
+               <div className="icon-wrapper"><DollarSign size={24} color="#059669" /></div>
+               <span className="trend-badge positive">↗ +15.3%</span>
+            </div>
+            <h3>Versement total perçu</h3>
+            <div className="amount">{formatCurrency(stats.totalPaid)}</div>
+            <div className="progress-section">
+              <div className="progress-bar-bg">
+                 <div className="progress-bar-fill success" style={{ width: '77%' }}></div>
               </div>
-              <h3>Versement total perçu</h3>
-              <div className="amount">{formatCurrency(stats.totalPaid)}</div>
-              <div className="progress-section">
-                <div className="progress-bar-bg">
-                   <div className="progress-bar-fill success" style={{ width: '77%' }}></div>
-                </div>
-                <p className="subtitle">77% de l'objectif annuel atteint</p>
-              </div>
+              <p className="subtitle">77% de l'objectif annuel atteint</p>
             </div>
           </div>
 
-          <div className="premium-card warning-gradient">
-            <div className="card-glass">
-              <div className="card-top">
-                 <div className="icon-wrapper"><AlertCircle size={24} color="#B45309" /></div>
-                 <span className="trend-badge negative">↘ à surveiller</span>
+          <div className="app-card">
+            <div className="card-top">
+               <div className="icon-wrapper"><AlertCircle size={24} color="#B45309" /></div>
+               <span className="trend-badge negative">↘ à surveiller</span>
+            </div>
+            <h3>Argent restant à payer</h3>
+            <div className="amount">{formatCurrency(stats.totalRemaining)}</div>
+            <div className="progress-section">
+              <div className="progress-bar-bg">
+                 <div className="progress-bar-fill warning" style={{ width: '23%' }}></div>
               </div>
-              <h3>Argent restant à payer</h3>
-              <div className="amount">{formatCurrency(stats.totalRemaining)}</div>
-              <div className="progress-section">
-                <div className="progress-bar-bg">
-                   <div className="progress-bar-fill warning" style={{ width: '23%' }}></div>
-                </div>
-                <p className="subtitle">Impayés à recouvrer urgemment</p>
-              </div>
+              <p className="subtitle">Impayés à recouvrer urgemment</p>
             </div>
           </div>
         </div>
@@ -1112,8 +1156,8 @@ const DashboardOverview = ({ stats, formatCurrency, onViewStudent, currentFamili
               {resetMessage && <div style={{ color: '#059669', fontSize: '14px', marginBottom: '16px', textAlign: 'center', background: '#ECFDF5', padding: '8px', borderRadius: '4px' }}>{resetMessage}</div>}
               
               <div style={{ display: 'flex', gap: '16px' }}>
-                <button type="button" className="btn-outline" style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid var(--border-light)', borderRadius: '8px', cursor: 'pointer' }} onClick={() => {setShowLogin(false); setError(''); setResetMessage('');}}>Annuler</button>
-                <button type="submit" className="btn-primary" style={{ flex: 1, padding: '10px', background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 500 }}>Déverrouiller</button>
+                <button type="button" className="btn-outline" style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid var(--border-light)', borderRadius: '8px', cursor: 'pointer' }} onClick={() => {setShowLogin(false); setError(''); setResetMessage('');}} disabled={loading}>Annuler</button>
+                <button type="submit" className="btn-primary" style={{ flex: 1, padding: '10px', background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 500 }} disabled={loading}>{loading ? 'Vérification...' : 'Déverrouiller'}</button>
               </div>
             </form>
           </div>
@@ -1164,8 +1208,8 @@ const DashboardOverview = ({ stats, formatCurrency, onViewStudent, currentFamili
         </div>
       )}
 
-      <div className="secondary-grid stagger-children" style={{ animationDelay: '200ms', marginTop: '32px' }}>
-         <div className="glass-stat-card">
+      <div className="students-grid stagger-children" style={{ animationDelay: '200ms', marginTop: '32px' }}>
+         <div className="app-card" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <div className="stat-icon-soft blue"><Users size={24} /></div>
             <div className="stat-details">
               <h4>Total Élèves</h4>
@@ -1173,7 +1217,7 @@ const DashboardOverview = ({ stats, formatCurrency, onViewStudent, currentFamili
             </div>
          </div>
          
-         <div className="glass-stat-card">
+         <div className="app-card" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <div className="stat-icon-soft purple"><Activity size={24} /></div>
             <div className="stat-details">
               <h4>Recouvrement</h4>
@@ -1181,7 +1225,7 @@ const DashboardOverview = ({ stats, formatCurrency, onViewStudent, currentFamili
             </div>
          </div>
          
-         <div className="glass-stat-card">
+         <div className="app-card" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <div className="stat-icon-soft green"><TrendingUp size={24} /></div>
             <div className="stat-details">
               <h4>Paiements (Aujourd'hui)</h4>
@@ -1191,38 +1235,37 @@ const DashboardOverview = ({ stats, formatCurrency, onViewStudent, currentFamili
       </div>
       
       {(() => {
-        const recentPayments = [];
-        if (currentFamilies) {
-          currentFamilies.forEach(family => {
-            if (family.children) {
-              family.children.forEach(child => {
-                if (child.payments) {
-                  child.payments.forEach(payment => {
-                    if (payment.amountPaid > 0) {
-                      recentPayments.push({
-                        familyId: family.id,
-                        studentName: child.name,
-                        className: child.grade,
-                        amount: payment.amountPaid,
-                        status: payment.isFullyPaid ? 'Validé' : 'Partiel',
-                        date: new Date().toLocaleDateString('fr-FR'),
-                        timestamp: new Date().getTime()
-                      });
-                    }
-                  });
-                }
-              });
-            }
-          });
-        }
-        // Prendre les 5 derniers et simuler des dates récentes s'il y en a beaucoup
-        const displayPayments = recentPayments.slice(-5).reverse();
+        // Filter by selected date
+        const displayPayments = transactions.filter(t => {
+          if (!t.date) return false;
+          const tDate = t.date.split('T')[0];
+          return tDate === historyDate;
+        });
         
         return (
           <div className="recent-transactions animate-fade-in-up" style={{ animationDelay: '400ms', marginTop: '32px' }}>
-         <div className="section-header">
+         <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
            <h3>Derniers paiements enregistrés</h3>
-           <button className="btn btn-outline btn-sm">Voir l'historique</button>
+           <div style={{ position: 'relative', display: 'inline-block' }}>
+             <div className="btn-outline btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'white' }}>
+               <Calendar size={16} />
+               <span style={{ fontWeight: 500 }}>Historique :</span>
+               <input 
+                 type="date" 
+                 value={historyDate}
+                 onChange={(e) => setHistoryDate(e.target.value)}
+                 style={{ 
+                   border: 'none', 
+                   outline: 'none', 
+                   background: 'transparent',
+                   color: 'var(--text-color)',
+                   fontFamily: 'inherit',
+                   fontSize: '14px',
+                   cursor: 'pointer'
+                 }}
+               />
+             </div>
+           </div>
          </div>
          <div className="table-wrapper">
            <table className="modern-table">
@@ -1230,39 +1273,34 @@ const DashboardOverview = ({ stats, formatCurrency, onViewStudent, currentFamili
                <tr>
                  <th>Élève</th>
                  <th>Classe</th>
-                 <th>Date & Heure</th>
+                 <th>Heure</th>
                  <th>Montant</th>
                  <th>Statut</th>
                  <th style={{ width: '40px' }}></th>
                </tr>
              </thead>
              <tbody>
-               {displayPayments.length > 0 ? displayPayments.map((payment, idx) => (
+               {displayPayments.length > 0 ? displayPayments.map((payment, idx) => {
+                 const timeString = new Date(payment.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                 return (
                  <tr key={idx}>
                    <td>
                      <div className="student-cell">
-                       <div className="avatar-sm" style={{background: 'var(--color-primary)'}}>{payment.studentName.charAt(0).toUpperCase()}</div>
-                       <span>{payment.studentName}</span>
+                       <div className="avatar-sm" style={{background: 'var(--color-primary)'}}>{payment.students?.name?.charAt(0).toUpperCase()}</div>
+                       <span>{payment.students?.name}</span>
                      </div>
                    </td>
-                   <td>{payment.className}</td>
-                   <td>{payment.date}</td>
+                   <td>{payment.students?.grade}</td>
+                   <td>{timeString}</td>
                    <td className="amount-cell">{payment.amount.toLocaleString()} FCFA</td>
-                   <td><span className={`badge ${payment.status === 'Validé' ? 'badge-success' : 'badge-warning'}`}>{payment.status}</span></td>
+                   <td><span className="badge badge-success">Validé</span></td>
                    <td style={{ textAlign: 'right' }}>
-                     <button 
-                       onClick={() => onViewStudent && onViewStudent(payment.familyId)} 
-                       className="btn-outline btn-sm"
-                       title="Accéder au dossier"
-                       style={{ padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                     >
-                       <Eye size={16} />
-                     </button>
+                     {/* onViewStudent n'est plus directement applicable sans familyId. On pourrait chercher familyId ou juste l'ignorer ici */}
                    </td>
                  </tr>
-               )) : (
+               )}) : (
                  <tr>
-                   <td colSpan="6" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>Aucun paiement enregistré pour le moment.</td>
+                   <td colSpan="6" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>Aucun paiement enregistré pour cette date.</td>
                  </tr>
                )}
              </tbody>
@@ -1289,7 +1327,98 @@ const Dashboard = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
 
-  const handleSearch = (e) => {
+  // Premium Subscription state
+  const [premiumState, setPremiumState] = useState(null);
+  const [showPremiumBlocker, setShowPremiumBlocker] = useState(false);
+  const [showPaymentSimulation, setShowPaymentSimulation] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState('monthly'); // 'monthly' or 'yearly'
+  const [simPhoneNumber, setSimPhoneNumber] = useState('');
+  const [simProcessing, setSimProcessing] = useState(false);
+
+  useEffect(() => {
+    const fetchPremiumStatus = async () => {
+      const { data, error } = await supabase.from('global_settings').select('data').eq('id', 3).single();
+      
+      let currentPremiumSettings = null;
+      if (!data || error) {
+        currentPremiumSettings = {
+          firstConnectionDate: new Date().toISOString(),
+          isPremium: false
+        };
+        await supabase.from('global_settings').upsert([{ id: 3, data: currentPremiumSettings }]);
+      } else {
+        currentPremiumSettings = data.data;
+      }
+      
+      const firstConn = new Date(currentPremiumSettings.firstConnectionDate);
+      // Replace time part to avoid hours issue
+      const today = new Date();
+      const diffTime = today.getTime() - firstConn.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      const daysLeft = 30 - diffDays;
+      
+      currentPremiumSettings.daysLeft = daysLeft;
+      setPremiumState(currentPremiumSettings);
+      
+      if (!currentPremiumSettings.isPremium && daysLeft <= 0) {
+        setTimeout(() => {
+          setShowPremiumBlocker(true);
+        }, 5000);
+      }
+    };
+    fetchPremiumStatus();
+  }, []);
+
+  const [stats, setStats] = useState({
+    totalPaid: 0,
+    totalRemaining: 0,
+    totalStudents: 0,
+    collectionRate: 0
+  });
+
+  const [currentFamilies, setCurrentFamilies] = useState([]);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      // Pour une migration rapide, on peut soit interroger les tables relationnelles,
+      // soit reconstruire la structure requise par les sous-composants.
+      
+      const { data: studentsData } = await supabase.from('students').select('*');
+      const { data: paymentsData } = await supabase.from('payments').select('*');
+      
+      let actualTotalStudents = studentsData ? studentsData.length : 0;
+      let actualTotalPaid = 0;
+      let actualTotalRemaining = 0;
+      
+      if (paymentsData) {
+        paymentsData.forEach(payment => {
+          actualTotalPaid += (payment.amount_paid || 0);
+          const remaining = (payment.amount || 0) - (payment.amount_paid || 0);
+          if (remaining > 0) {
+            actualTotalRemaining += remaining;
+          }
+        });
+      }
+
+      const actualCollectionRate = actualTotalPaid + actualTotalRemaining > 0 
+        ? Math.round((actualTotalPaid / (actualTotalPaid + actualTotalRemaining)) * 100)
+        : 0;
+
+      setStats({
+        totalPaid: actualTotalPaid,
+        totalRemaining: actualTotalRemaining,
+        totalStudents: actualTotalStudents,
+        collectionRate: actualCollectionRate
+      });
+
+      // Populate currentFamilies for downstream components (PaymentsView, DashboardOverview)
+      const nested = await getFamiliesNested();
+      setCurrentFamilies(nested);
+    };
+    fetchDashboardData();
+  }, [activeTab]);
+
+  const handleSearch = async (e) => {
     const value = e.target.value;
     setSearchQuery(value);
     
@@ -1299,25 +1428,20 @@ const Dashboard = () => {
       return;
     }
 
-    const savedFamilies = localStorage.getItem('eduPayFamilies');
-    const families = savedFamilies ? JSON.parse(savedFamilies) : [];
-    const queryStr = value.toLowerCase();
+    const { data: families } = await supabase.from('families').select('*').ilike('parent_name', `%${value}%`);
+    const { data: students } = await supabase.from('students').select('*, families(parent_name)').ilike('name', `%${value}%`);
     
     const results = [];
-    families.forEach(family => {
-      if (family.parentName && family.parentName.toLowerCase().includes(queryStr)) {
-        if (!results.find(r => r.name === family.parentName && r.type === 'parent')) {
-          results.push({ type: 'parent', name: family.parentName, familyId: family.id });
-        }
-      }
-      if (family.children) {
-        family.children.forEach(child => {
-          if (child.name && child.name.toLowerCase().includes(queryStr)) {
-            results.push({ type: 'student', name: child.name, familyId: family.id, parentName: family.parentName });
-          }
-        });
-      }
-    });
+    if (families) {
+      families.forEach(family => {
+        results.push({ type: 'parent', name: family.parent_name, familyId: family.id });
+      });
+    }
+    if (students) {
+      students.forEach(student => {
+        results.push({ type: 'student', name: student.name, familyId: student.family_id, parentName: student.families?.parent_name });
+      });
+    }
     
     setSearchResults(results);
     setShowSuggestions(true);
@@ -1327,42 +1451,6 @@ const Dashboard = () => {
     setSearchQuery(result.name);
     setShowSuggestions(false);
     setActiveTab('students');
-  };
-
-  // Récupération et calcul des statistiques réelles depuis la base de données (localStorage)
-  const savedFamiliesStr = localStorage.getItem('eduPayFamilies');
-  const currentFamilies = savedFamiliesStr ? JSON.parse(savedFamiliesStr) : [];
-  
-  let actualTotalStudents = 0;
-  let actualTotalPaid = 0;
-  let actualTotalRemaining = 0;
-  
-  currentFamilies.forEach(family => {
-    if (family.children) {
-      actualTotalStudents += family.children.length;
-      family.children.forEach(child => {
-        if (child.payments) {
-          child.payments.forEach(payment => {
-             actualTotalPaid += (payment.amountPaid || 0);
-             const remaining = (payment.amountExpected || 0) - (payment.amountPaid || 0);
-             if (remaining > 0) {
-               actualTotalRemaining += remaining;
-             }
-          });
-        }
-      });
-    }
-  });
-
-  const actualCollectionRate = actualTotalPaid + actualTotalRemaining > 0 
-    ? Math.round((actualTotalPaid / (actualTotalPaid + actualTotalRemaining)) * 100)
-    : 0;
-
-  const stats = {
-    totalPaid: actualTotalPaid,
-    totalRemaining: actualTotalRemaining,
-    totalStudents: actualTotalStudents,
-    collectionRate: actualCollectionRate
   };
 
   const formatCurrency = (amount) => {
@@ -1397,7 +1485,7 @@ const Dashboard = () => {
           <a href="#" className={`nav-item ${activeTab === 'students' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveTab('students'); setIsMobileMenuOpen(false); }}>
             <span className="nav-icon">👥</span> Liste des élèves
           </a>
-          <a href="#" className="nav-item">
+          <a href="#" className={`nav-item ${activeTab === 'payments' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveTab('payments'); setIsMobileMenuOpen(false); }}>
             <span className="nav-icon">💳</span> Paiements
           </a>
           <div className="nav-group">
@@ -1409,71 +1497,35 @@ const Dashboard = () => {
               <div className="sub-nav animate-fade-in-up" style={{ paddingLeft: '40px', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
                 <a 
                   href="#" 
-                  className={`nav-item ${activeTab === 'settings-personal' ? 'active' : ''}`} 
-                  style={{ 
-                    fontSize: '14px', 
-                    padding: '8px 12px', 
-                    minHeight: 'auto',
-                    opacity: isDirector ? 1 : 0.5,
-                    cursor: isDirector ? 'pointer' : 'not-allowed'
-                  }} 
-                  onClick={(e) => { 
-                    e.preventDefault(); 
-                    if (isDirector) {
-                      setActiveTab('settings-personal'); 
-                      setIsMobileMenuOpen(false);
-                    }
-                  }}
-                >
-                  Informations personnelles
-                </a>
-                <a 
-                  href="#" 
                   className={`nav-item ${activeTab === 'settings-plan' ? 'active' : ''}`} 
-                  style={{ fontSize: '14px', padding: '8px 12px', minHeight: 'auto' }} 
+                  style={{ fontSize: '14px', padding: '8px 12px', minHeight: 'auto', whiteSpace: 'nowrap' }} 
                   onClick={(e) => { e.preventDefault(); setActiveTab('settings-plan'); setIsMobileMenuOpen(false); }}
                 >
                   Plan
                 </a>
                 <a 
                   href="#" 
+                  className={`nav-item ${activeTab === 'settings-bulletin' ? 'active' : ''}`} 
+                  style={{ fontSize: '14px', padding: '8px 12px', minHeight: 'auto', whiteSpace: 'nowrap' }} 
+                  onClick={(e) => { e.preventDefault(); setActiveTab('settings-bulletin'); setIsMobileMenuOpen(false); }}
+                >
+                  Paramétrage bulletin
+                </a>
+                <a 
+                  href="#" 
                   className={`nav-item ${activeTab === 'settings-teachers' ? 'active' : ''}`} 
-                  style={{ 
-                    fontSize: '14px', 
-                    padding: '8px 12px', 
-                    minHeight: 'auto',
-                    opacity: isDirector ? 1 : 0.5,
-                    cursor: isDirector ? 'pointer' : 'not-allowed'
-                  }} 
-                  onClick={(e) => { 
-                    e.preventDefault(); 
-                    if (isDirector) {
-                      setActiveTab('settings-teachers'); 
-                      setIsMobileMenuOpen(false);
-                    }
-                  }}
+                  style={{ fontSize: '14px', padding: '8px 12px', minHeight: 'auto', whiteSpace: 'nowrap' }} 
+                  onClick={(e) => { e.preventDefault(); setActiveTab('settings-teachers'); setIsMobileMenuOpen(false); }}
                 >
                   Gestion des enseignants
                 </a>
                 <a 
                   href="#" 
-                  className={`nav-item ${activeTab === 'settings-bulletin' ? 'active' : ''}`} 
-                  style={{ 
-                    fontSize: '14px', 
-                    padding: '8px 12px', 
-                    minHeight: 'auto',
-                    opacity: isDirector ? 1 : 0.5,
-                    cursor: isDirector ? 'pointer' : 'not-allowed'
-                  }} 
-                  onClick={(e) => { 
-                    e.preventDefault(); 
-                    if (isDirector) {
-                      setActiveTab('settings-bulletin'); 
-                      setIsMobileMenuOpen(false);
-                    }
-                  }}
+                  className={`nav-item ${activeTab === 'settings-personal' ? 'active' : ''}`} 
+                  style={{ fontSize: '14px', padding: '8px 12px', minHeight: 'auto', whiteSpace: 'nowrap' }} 
+                  onClick={(e) => { e.preventDefault(); setActiveTab('settings-personal'); setIsMobileMenuOpen(false); }}
                 >
-                  Paramétrage bulletin
+                  Informations personnelles
                 </a>
               </div>
             )}
@@ -1482,7 +1534,7 @@ const Dashboard = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
+        <header className="dashboard-header" style={{ position: 'relative' }}>
            <button className="hamburger-btn" onClick={() => setIsMobileMenuOpen(true)}>
              <Menu size={24} />
            </button>
@@ -1537,8 +1589,40 @@ const Dashboard = () => {
                  )}
                </div>
              )}
-           </div>
-           <div className="header-actions">
+             
+            </div>
+
+            {/* Premium Badge (Centered & Clickable) */}
+            {premiumState && !premiumState.isPremium && (
+              <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', zIndex: 20 }}>
+                <button 
+                  onClick={() => setShowPaymentSimulation(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: premiumState.daysLeft > 5 ? 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)' : 'linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%)',
+                    color: premiumState.daysLeft > 5 ? '#92400E' : '#B91C1C',
+                    border: `1px solid ${premiumState.daysLeft > 5 ? '#FCD34D' : '#FCA5A5'}`,
+                    padding: '6px 16px',
+                    borderRadius: '24px',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    outline: 'none'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)'; }}
+                >
+                  <Crown size={16} color={premiumState.daysLeft > 5 ? '#D97706' : '#DC2626'} />
+                  Essai Gratuit - Reste {premiumState.daysLeft > 0 ? premiumState.daysLeft : 0} jour(s)
+                </button>
+              </div>
+            )}
+            
+            <div className="header-actions">
              <button className="icon-btn">
                <Bell size={20} />
                <span className="notification-dot"></span>
@@ -1584,12 +1668,133 @@ const Dashboard = () => {
         <div className="dashboard-content">
           {activeTab === 'overview' && <DashboardOverview stats={stats} formatCurrency={formatCurrency} currentFamilies={currentFamilies} onViewStudent={(id) => { setActiveTab('students'); localStorage.setItem('eduPaySelectedFamily', id); }} />}
           {activeTab === 'students' && <StudentsList initialActiveFamilyId={localStorage.getItem('eduPaySelectedFamily')} />}
+          {activeTab === 'payments' && <PaymentsView currentFamilies={currentFamilies} />}
           {activeTab === 'settings-plan' && <SettingsPlan />}
           {activeTab === 'settings-personal' && <SettingsPersonal />}
           {activeTab === 'settings-teachers' && <SettingsTeachers />}
           {activeTab === 'settings-bulletin' && <SettingsBulletin />}
         </div>
       </main>
+
+      {/* Premium Blocker Modal */}
+      {showPremiumBlocker && !showPaymentSimulation && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(10px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="animate-fade-in-up" style={{ background: 'white', padding: '40px', borderRadius: '16px', maxWidth: '480px', width: '90%', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+            <div style={{ background: '#FEE2E2', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', color: '#EF4444' }}>
+              <Lock size={40} />
+            </div>
+            <h2 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '16px', color: '#0F172A' }}>Période d'essai terminée</h2>
+            <p style={{ color: '#475569', marginBottom: '32px', lineHeight: 1.6 }}>
+              Votre période d'essai gratuit de 30 jours est arrivée à expiration. Pour continuer à profiter de toutes les fonctionnalités d'Edu-Pay (gestion des élèves, recouvrements, impressions...), veuillez activer votre abonnement Premium.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <button onClick={() => setShowPaymentSimulation(true)} className="btn-primary" style={{ background: '#F59E0B', borderColor: '#F59E0B', fontSize: '16px', padding: '14px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '20px' }}>📱</span> Payer par TMoney / Flooz
+              </button>
+              <button onClick={() => alert("Veuillez contacter le support Edu-Pay à l'adresse support@edupay.com.")} className="btn-outline" style={{ padding: '14px' }}>
+                Contacter l'administrateur
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Simulation Modal */}
+      {showPaymentSimulation && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="animate-fade-in-up" style={{ background: 'white', padding: '32px', borderRadius: '16px', maxWidth: '400px', width: '90%', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+               <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>Paiement Sécurisé</h3>
+               <button onClick={() => setShowPaymentSimulation(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '24px', color: '#94A3B8' }}>✕</button>
+            </div>
+            
+            <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '12px', marginBottom: '24px', border: '1px solid #E2E8F0' }}>
+               <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#475569' }}>Choisissez votre plan</h4>
+               
+               <div 
+                 onClick={() => setSelectedPlan('monthly')}
+                 style={{ 
+                   display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                   padding: '12px', marginBottom: '8px', borderRadius: '8px', cursor: 'pointer',
+                   border: selectedPlan === 'monthly' ? '2px solid #10B981' : '1px solid #CBD5E1',
+                   background: selectedPlan === 'monthly' ? '#ECFDF5' : 'white'
+                 }}
+               >
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                   <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: selectedPlan === 'monthly' ? '4px solid #10B981' : '1px solid #94A3B8' }}></div>
+                   <span style={{ fontWeight: 600, color: '#0F172A' }}>Mensuel</span>
+                 </div>
+                 <span style={{ fontWeight: 700, color: '#0F172A' }}>5 000 FCFA</span>
+               </div>
+
+               <div 
+                 onClick={() => setSelectedPlan('yearly')}
+                 style={{ 
+                   display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                   padding: '12px', borderRadius: '8px', cursor: 'pointer',
+                   border: selectedPlan === 'yearly' ? '2px solid #10B981' : '1px solid #CBD5E1',
+                   background: selectedPlan === 'yearly' ? '#ECFDF5' : 'white'
+                 }}
+               >
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                   <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: selectedPlan === 'yearly' ? '4px solid #10B981' : '1px solid #94A3B8' }}></div>
+                   <div style={{ display: 'flex', flexDirection: 'column' }}>
+                     <span style={{ fontWeight: 600, color: '#0F172A' }}>Annuel</span>
+                     <span style={{ fontSize: '11px', color: '#10B981', fontWeight: 600 }}>Économisez 20 000 FCFA</span>
+                   </div>
+                 </div>
+                 <span style={{ fontWeight: 700, color: '#0F172A' }}>40 000 FCFA</span>
+               </div>
+            </div>
+
+            <div>
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (!window.FedaPay) {
+                    alert("L'outil de paiement n'est pas encore prêt. Veuillez patienter ou recharger la page.");
+                    return;
+                  }
+                  setSimProcessing(true);
+                  let widget = window.FedaPay.init({
+                    public_key: 'pk_live_C2KkZEsYgriOFu-4NrbTM-t2',
+                    transaction: {
+                      amount: selectedPlan === 'monthly' ? 5000 : 40000,
+                      description: 'Abonnement Premium Edu-Pay (' + (selectedPlan === 'monthly' ? 'Mensuel' : 'Annuel') + ')'
+                    },
+                    customer: {
+                      email: 'directeur@edupay.com',
+                      lastname: 'Directeur'
+                    },
+                    onComplete: async function(resp) {
+                      if(resp.reason === 'CHECKOUT COMPLETE') {
+                        const newSettings = { ...premiumState, isPremium: true, plan: selectedPlan };
+                        await supabase.from('global_settings').upsert([{ id: 3, data: newSettings }]);
+                        setPremiumState(newSettings);
+                        setShowPremiumBlocker(false);
+                        setShowPaymentSimulation(false);
+                      } else {
+                        console.log("Paiement non finalisé:", resp);
+                      }
+                      setSimProcessing(false);
+                    }
+                  });
+                  widget.open();
+                }}
+                disabled={simProcessing} 
+                className="btn-primary" 
+                style={{ width: '100%', padding: '14px', fontSize: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', background: simProcessing ? '#94A3B8' : '#10B981', borderColor: simProcessing ? '#94A3B8' : '#10B981' }}
+              >
+                {simProcessing ? 'Ouverture...' : `Payer ${selectedPlan === 'monthly' ? '5 000' : '40 000'} FCFA`}
+              </button>
+            </div>
+            <p style={{ textAlign: 'center', fontSize: '12px', color: '#94A3B8', marginTop: '16px' }}>
+              Paiement sécurisé par FedaPay.
+            </p>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { School, User, Mail, MapPin, Building, Map, ArrowRight } from 'lucide-react';
+import { School, User, Mail, MapPin, Building, Map, ArrowRight, Lock } from 'lucide-react';
+import { supabase } from '../supabaseClient';
 
 const RegisterDirector = () => {
   const navigate = useNavigate();
@@ -8,19 +9,71 @@ const RegisterDirector = () => {
     schoolName: '',
     fullName: '',
     email: '',
+    password: '',
+    confirmPassword: '',
     country: '',
     city: '',
     neighborhood: ''
   });
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Simulation d'une inscription réussie, retour au login
-    navigate('/login');
+    setLoading(true);
+    setError(null);
+
+    if (formData.password !== formData.confirmPassword) {
+      setError("Les mots de passe ne correspondent pas.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // 1. Create user in Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // 2. Insert into profiles
+        const { error: profileError } = await supabase.from('profiles').insert([
+          {
+            id: authData.user.id,
+            role: 'director',
+            name: formData.fullName
+          }
+        ]);
+        if (profileError) throw profileError;
+
+        // 3. Optional: save school settings to global_settings (id=1 usually for the single school)
+        const schoolData = {
+          schoolName: formData.schoolName,
+          country: formData.country,
+          city: formData.city,
+          neighborhood: formData.neighborhood
+        };
+        
+        await supabase.from('global_settings').upsert([
+          { id: 1, data: schoolData }
+        ]);
+
+        // Navigate to login
+        navigate('/login');
+      }
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -37,6 +90,8 @@ const RegisterDirector = () => {
         </div>
 
         <div className="card-body" style={{ paddingTop: 0 }}>
+          {error && <div style={{ color: 'white', background: 'var(--color-danger)', padding: '10px', borderRadius: '8px', marginBottom: '15px', textAlign: 'center' }}>{error}</div>}
+          
           <form onSubmit={handleSubmit} className="form-group" style={{ gap: '20px', display: 'flex', flexDirection: 'column' }}>
             
             <div className="form-group" style={{ margin: 0 }}>
@@ -60,6 +115,24 @@ const RegisterDirector = () => {
               <div className="search-input-wrapper">
                 <Mail className="search-icon" size={18} />
                 <input type="email" name="email" className="search-input" placeholder="directeur@ecole.com" required onChange={handleChange} />
+              </div>
+            </div>
+
+            <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">Mot de passe <span style={{color: 'var(--color-danger)'}}>*</span></label>
+                <div className="search-input-wrapper">
+                  <Lock className="search-icon" size={18} />
+                  <input type="password" name="password" className="search-input" placeholder="••••••••" required onChange={handleChange} />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">Confirmer <span style={{color: 'var(--color-danger)'}}>*</span></label>
+                <div className="search-input-wrapper">
+                  <Lock className="search-icon" size={18} />
+                  <input type="password" name="confirmPassword" className="search-input" placeholder="••••••••" required onChange={handleChange} />
+                </div>
               </div>
             </div>
 
@@ -89,8 +162,8 @@ const RegisterDirector = () => {
               </div>
             </div>
 
-            <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '12px', padding: '14px', fontSize: '16px', borderRadius: 'var(--radius-md)' }}>
-              S'inscrire <ArrowRight size={18} />
+            <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '12px', padding: '14px', fontSize: '16px', borderRadius: 'var(--radius-md)' }} disabled={loading}>
+              {loading ? 'Inscription en cours...' : <><ArrowRight size={18} /> S'inscrire</>}
             </button>
             
             <div style={{ textAlign: 'center', marginTop: '16px' }}>

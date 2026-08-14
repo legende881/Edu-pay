@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, User, Clock, CheckCircle, AlertCircle, Calendar, X, CreditCard, Smartphone } from 'lucide-react';
-
+import { supabase } from '../supabaseClient';
+import { getFamiliesNested, saveFamiliesToSupabase } from '../supabaseService';
 const ParentDashboard = () => {
   const navigate = useNavigate();
   const [family, setFamily] = useState(null);
   const [loading, setLoading] = useState(true);
   const [chatNumber, setChatNumber] = useState(null);
-  const [yasNumber, setYasNumber] = useState('');
+  const [tmoneyNumber, setTmoneyNumber] = useState('');
   const [floozNumber, setFloozNumber] = useState('');
   
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -22,8 +23,8 @@ const ParentDashboard = () => {
       if (settings.chatNumber) {
         setChatNumber(settings.chatNumber);
       }
-      if (settings.yasNumber) {
-        setYasNumber(settings.yasNumber);
+      if (settings.tmoneyNumber) {
+        setTmoneyNumber(settings.tmoneyNumber);
       }
       if (settings.floozNumber) {
         setFloozNumber(settings.floozNumber);
@@ -38,9 +39,8 @@ const ParentDashboard = () => {
       return;
     }
 
-    const saved = localStorage.getItem('eduPayFamilies');
-    if (saved) {
-      const families = JSON.parse(saved);
+    const fetchFamily = async () => {
+      const families = await getFamiliesNested();
       const found = families.find(f => f.id === parentId);
       if (found) {
         setFamily(found);
@@ -48,10 +48,10 @@ const ParentDashboard = () => {
         localStorage.removeItem('loggedParentId');
         navigate('/login/parent');
       }
-    } else {
-      navigate('/login/parent');
-    }
-    setLoading(false);
+      setLoading(false);
+    };
+    
+    fetchFamily();
   }, [navigate]);
 
   useEffect(() => {
@@ -146,8 +146,8 @@ const ParentDashboard = () => {
       return f;
     });
 
-    localStorage.setItem('eduPayFamilies', JSON.stringify(families));
     if (updatedFamily) {
+      saveFamiliesToSupabase([updatedFamily]);
       setFamily(updatedFamily); // Mise à jour de l'affichage local pour voir la barre de progression bouger
     }
   };
@@ -213,28 +213,22 @@ const ParentDashboard = () => {
                     const daysRemaining = calculateDaysRemaining(payment.deadline);
                     const isCurrentPending = pendingPayment && pendingPayment.id === payment.id;
                     
-                    let bgStatus = 'var(--bg-app)';
+                    let bgStatus = 'var(--bg-card)';
                     let borderStatus = 'var(--border-light)';
                     let fillColor = 'var(--color-primary)';
                     
                     if (payment.isFullyPaid) {
-                      bgStatus = '#ECFDF5';
-                      borderStatus = '#A7F3D0';
                       fillColor = '#10B981';
                     } else if (isOverdue) {
-                      bgStatus = '#FEF2F2';
-                      borderStatus = '#FECACA';
                       fillColor = '#EF4444';
                     } else if (isCurrentPending) {
-                      bgStatus = '#EFF6FF';
-                      borderStatus = '#BFDBFE';
                       fillColor = progressPercent >= 50 ? '#F59E0B' : '#3B82F6';
                     } else {
                       fillColor = progressPercent >= 50 ? '#F59E0B' : 'var(--color-primary)';
                     }
 
                     return (
-                      <div key={payment.id} style={{ background: bgStatus, border: `1px solid ${borderStatus}`, borderRadius: '12px', padding: '16px', position: 'relative', overflow: 'hidden' }}>
+                      <div key={payment.id} style={{ background: bgStatus, border: `1px solid ${borderStatus}`, borderRadius: 'var(--radius-md)', padding: '16px', position: 'relative', overflow: 'hidden' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                            <div>
                              <span style={{ fontWeight: 600, color: 'var(--text-main)', display: 'block', marginBottom: '4px' }}>{payment.title}</span>
@@ -281,8 +275,8 @@ const ParentDashboard = () => {
                   <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
                     <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: 'var(--text-main)', textAlign: 'center' }}>Régler la scolarité via :</h4>
                     <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                      <button className="payment-btn payment-yas" onClick={() => setPaymentModal({ isOpen: true, method: 'YAS', student: student.name, studentId: student.id, step: 1, phoneNumber: '', amount: '' })}>
-                        YAS
+                      <button className="payment-btn payment-tmoney" onClick={() => setPaymentModal({ isOpen: true, method: 'Tmoney', student: student.name, studentId: student.id, step: 1, phoneNumber: '', amount: '' })}>
+                        Tmoney
                       </button>
                       <button className="payment-btn payment-flooz" onClick={() => setPaymentModal({ isOpen: true, method: 'Flooz', student: student.name, studentId: student.id, step: 1, phoneNumber: '', amount: '' })}>
                         Flooz
@@ -399,8 +393,8 @@ const ParentDashboard = () => {
             
             {paymentModal.step === 1 && (
               <>
-                <div style={{ background: paymentModal.method === 'YAS' ? '#FABB18' : '#0066CC', color: paymentModal.method === 'YAS' ? '#1A1A1A' : '#FFF', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '24px', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
-                  {paymentModal.method === 'YAS' ? 'YAS' : 'FLZ'}
+                <div style={{ background: paymentModal.method === 'Tmoney' ? '#FABB18' : '#0066CC', color: paymentModal.method === 'Tmoney' ? '#1A1A1A' : '#FFF', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '24px', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
+                  {paymentModal.method === 'Tmoney' ? 'TMZ' : 'FLZ'}
                 </div>
                 <h3 style={{ marginBottom: '16px', fontSize: '20px' }}>Paiement {paymentModal.method}</h3>
                 
@@ -430,7 +424,7 @@ const ParentDashboard = () => {
                     onChange={(e) => setPaymentModal({...paymentModal, amount: e.target.value})}
                   />
                   <div style={{ marginTop: '12px', padding: '8px', background: '#E2E8F0', borderRadius: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>
-                    Les fonds seront virés vers le compte de l'école (N°: {paymentModal.method === 'YAS' ? (yasNumber || 'Non configuré') : (floozNumber || 'Non configuré')}).
+                    Les fonds seront virés vers le compte de l'école (N°: {paymentModal.method === 'Tmoney' ? (tmoneyNumber || 'Non configuré') : (floozNumber || 'Non configuré')}).
                   </div>
                 </div>
 
@@ -438,9 +432,9 @@ const ParentDashboard = () => {
                   <button className="btn-outline" style={{ flex: 1, padding: '12px' }} onClick={() => setPaymentModal({ ...paymentModal, isOpen: false })}>Annuler</button>
                   <button 
                     className="btn-primary" 
-                    style={{ flex: 1, padding: '12px', background: paymentModal.method === 'YAS' ? '#E0A800' : '#004C99', borderColor: 'transparent', color: paymentModal.method === 'YAS' ? '#1A1A1A' : '#FFF' }} 
+                    style={{ flex: 1, padding: '12px', background: paymentModal.method === 'Tmoney' ? '#E0A800' : '#004C99', borderColor: 'transparent', color: paymentModal.method === 'Tmoney' ? '#1A1A1A' : '#FFF' }} 
                     onClick={() => { 
-                      const targetNumber = paymentModal.method === 'YAS' ? yasNumber : floozNumber;
+                      const targetNumber = paymentModal.method === 'Tmoney' ? tmoneyNumber : floozNumber;
                       if (!targetNumber) {
                         alert("Le directeur n'a pas encore configuré de numéro de réception pour ce moyen de paiement.");
                         return;
@@ -492,7 +486,7 @@ const ParentDashboard = () => {
                   <CheckCircle size={48} />
                 </div>
                 <h3 style={{ marginBottom: '16px', fontSize: '22px', color: '#10B981' }}>Paiement réussi !</h3>
-                <div style={{ background: '#F8FAFC', borderRadius: '12px', padding: '24px 16px', marginBottom: '24px', border: '1px solid #A7F3D0' }}>
+                <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-md)', padding: '24px 16px', marginBottom: '24px', border: '1px solid var(--border-light)' }}>
                    <p style={{ margin: 0, fontSize: '15px', color: 'var(--text-main)', lineHeight: 1.5 }}>
                      Votre compte {paymentModal.method} a été débité avec succès.<br/><br/>
                      Les fonds ont été transférés sur le compte de l'école. L'écolage de <strong>{paymentModal.student}</strong> est à jour !

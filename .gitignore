@@ -22,3 +22,19 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Build and Electron
+dist-electron
+release
+public/EduPay_Setup.exe
+
+# Environment
+.env
+.env.*
+
+# Temporary tools output
+lint_output.json
+lint_output.txt
+openapi.json
+openapi_pretty.json
+schema.json
