@@ -15,6 +15,7 @@
   "build": {
     "appId": "com.edupay.app",
     "productName": "EduPay",
+    "icon": "public/icon.png",
     "asar": false,
     "directories": {
       "output": "release"
