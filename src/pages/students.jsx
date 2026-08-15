@@ -386,7 +386,12 @@ const StudentsList = ({ initialActiveFamilyId }) => {
     }
   };
 
-  const filteredFamilies = families.filter(f => f.parentName.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredFamilies = families.filter(f => {
+    const term = (searchQuery || '').toLowerCase();
+    const matchParent = f.parentName && f.parentName.toLowerCase().includes(term);
+    const matchChild = f.children && f.children.some(c => c.name && c.name.toLowerCase().includes(term));
+    return matchParent || matchChild;
+  });
 
   // VUE DE DETAILS DU DOSSIER FAMILLE
   if (activeFamilyId) {
