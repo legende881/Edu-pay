@@ -95,7 +95,7 @@ export const deleteFamilyFromSupabase = async (familyId) => {
 export const addTransaction = async (transaction) => {
   const { data: { user } } = await supabase.auth.getUser();
   if (user) {
-    transaction.recorded_by = user.email;
+    transaction.recorded_by = user.user_metadata?.name || user.email;
   }
   const { data, error } = await supabase.from('transactions').insert([transaction]);
   if (error) {

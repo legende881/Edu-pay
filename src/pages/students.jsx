@@ -226,6 +226,19 @@ const StudentsList = ({ initialActiveFamilyId }) => {
 
   const handleManualPaymentSubmit = (e) => {
     e.preventDefault();
+    const addedAmount = parseFloat(manualPaymentModal.amount) || 0;
+    
+    if (addedAmount <= 0) {
+      const pin = window.prompt("Seul le directeur peut annuler ou réduire un paiement. Entrez le code PIN Directeur :");
+      if (pin !== "1234") {
+        alert("Action refusée. Code PIN incorrect.");
+        return;
+      }
+    } else {
+      const isConfirmed = window.confirm(`Êtes-vous sûr de vouloir enregistrer un paiement de ${addedAmount} FCFA ? Cette action est irréversible.`);
+      if (!isConfirmed) return;
+    }
+
     updatePayment(
       manualPaymentModal.familyId, 
       manualPaymentModal.studentId, 
@@ -345,13 +358,42 @@ const StudentsList = ({ initialActiveFamilyId }) => {
       const updatedChildren = family.children.map(student => {
         if (student.id !== studentId) return student;
         
+        let paymentBlocked = false;
+
         const updatedPayments = student.payments.map(payment => {
           if (payment.id !== trancheId) return payment;
+          
           const isPaid = !payment.isFullyPaid;
+
+          if (!isPaid) {
+            // L'utilisateur essaie d'annuler un paiement existant
+            const pin = window.prompt("Seul le directeur peut annuler un paiement. Entrez le code PIN Directeur :");
+            if (pin !== "1234") {
+              alert("Action refusée. Code PIN incorrect.");
+              paymentBlocked = true;
+              return payment;
+            }
+          } else {
+            // L'utilisateur essaie d'enregistrer un paiement
+            const isConfirmed = window.confirm("Êtes-vous sûr de vouloir enregistrer ce paiement complet ? Cette action est irréversible.");
+            if (!isConfirmed) {
+              paymentBlocked = true;
+              return payment;
+            }
+          }
+          
           const finalAmountPaid = isPaid ? payment.amountExpected : 0;
           
           const diff = finalAmountPaid - payment.amountPaid;
           if (diff > 0) {
+            addTransaction({
+              id: `txn-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+              payment_id: payment.id,
+              student_id: student.id,
+              amount: diff
+            });
+          } else if (diff < 0) {
+            // Transaction d'annulation (négative)
             addTransaction({
               id: `txn-${Date.now()}-${Math.floor(Math.random()*1000)}`,
               payment_id: payment.id,
@@ -366,6 +408,10 @@ const StudentsList = ({ initialActiveFamilyId }) => {
             isFullyPaid: isPaid
           };
         });
+
+        // Si l'action a été annulée, on ne modifie pas les paiements
+        if (paymentBlocked) return student;
+
         return { ...student, payments: updatedPayments };
       });
       return { ...family, children: updatedChildren };
