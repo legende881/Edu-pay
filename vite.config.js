@@ -6,6 +6,9 @@ import electron from 'vite-plugin-electron/simple';
 // https://vite.dev/config/
 export default defineConfig({
   base: './', // Important for electron production build
+  server: {
+    host: true, // Permet l'accès depuis le réseau local (mobile)
+  },
   plugins: [
     react(),
     electron({

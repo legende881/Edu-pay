@@ -42,7 +42,12 @@ const Login = () => {
       }
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Erreur lors de la connexion');
+      let errorMessage = err.message || 'Erreur lors de la connexion';
+      if (errorMessage.toLowerCase().includes('fetch')) {
+        const urlUsed = import.meta.env.VITE_SUPABASE_URL || 'Non définie (fallback utilisé)';
+        errorMessage = `Erreur réseau : Impossible de joindre Supabase. Vérifiez votre connexion. URL tentée: ${urlUsed}`;
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -127,16 +132,30 @@ const Login = () => {
                 </p>
               </div>
 
-              {/* Bouton de téléchargement Windows */}
-              <div style={{ flex: '1 1 100%', marginTop: 'var(--space-2)' }}>
+              {/* Boutons de téléchargement (Windows & Android) */}
+              <div style={{ flex: '1 1 100%', marginTop: 'var(--space-2)', display: 'flex', gap: '10px' }}>
                 <a 
                   href="/EduPay_Setup.exe"
                   download
                   className="btn" 
-                  style={{ width: '100%', padding: '12px', border: '1px solid var(--border-light)', color: 'var(--text-main)', background: 'white', borderRadius: 'var(--radius-md)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', textDecoration: 'none' }}
+                  style={{ flex: 1, padding: '12px', border: '1px solid var(--border-light)', color: 'var(--text-main)', background: 'white', borderRadius: 'var(--radius-md)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', textDecoration: 'none' }}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
-                  Télécharger pour Windows (.exe)
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#00a4ef">
+                    <path d="M0,3.449L9.75,2.1v9.451H0V3.449z M10.25,2.026L24,0v11.551H10.25V2.026z M0,12.45h9.75v9.451L0,20.551V12.45z M10.25,12.45H24V24l-13.75-2.026V12.45z"/>
+                  </svg>
+                  Version Windows
+                </a>
+                
+                <a 
+                  href="/EduPay_Android.apk"
+                  download
+                  className="btn" 
+                  style={{ flex: 1, padding: '12px', border: '1px solid var(--border-light)', color: 'var(--text-main)', background: 'white', borderRadius: 'var(--radius-md)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', textDecoration: 'none' }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#3DDC84">
+                    <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4483-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993.0001.5511-.4482.9997-.9993.9997zm-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997zm11.4045-6.02l1.9973-3.4592c.1148-.1988.0465-.4522-.152-.5669-.1992-.1149-.4527-.0466-.5668.152l-2.021 3.5002C15.7196 8.3075 13.9317 7.95 12 7.95c-1.9312 0-3.719.3575-5.1384.9975L4.8402 5.4473c-.1149-.1986-.368-.2669-.5672-.152-.1988.1148-.2668.368-.152.5669l1.9977 3.4592C2.69 11.2344.5772 14.5422.0911 18.5583h23.8178c-.4857-4.0161-2.5985-7.3239-6.0274-9.2369z"/>
+                  </svg>
+                  Version Android
                 </a>
               </div>
             </div>

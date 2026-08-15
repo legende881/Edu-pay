@@ -39,7 +39,11 @@ const LoginParent = () => {
       navigate('/parent-dashboard'); 
     } catch (err) {
       console.error(err);
-      setError('Identifiants incorrects.');
+      let errorMessage = err.message || 'Erreur lors de la connexion';
+      if (errorMessage.toLowerCase() === 'failed to fetch') {
+        errorMessage = 'Erreur réseau : Impossible de contacter le serveur. Vérifiez votre connexion internet ou redémarrez l\'application.';
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
