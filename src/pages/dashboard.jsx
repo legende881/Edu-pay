@@ -612,6 +612,7 @@ const SettingsTeachers = () => {
   const [editingTeacherId, setEditingTeacherId] = useState(null);
   const [teacherToDelete, setTeacherToDelete] = useState(null);
   const [showWhatsappModal, setShowWhatsappModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handlePrint = () => {
     window.print();
@@ -896,8 +897,23 @@ const SettingsTeachers = () => {
               </button>
             </div>
           </div>
+          
+          <div className="search-input-wrapper" style={{ marginBottom: '24px', maxWidth: '400px' }}>
+            <Search className="search-icon" size={18} />
+            <input 
+              type="text" 
+              className="search-input" 
+              placeholder="Rechercher un enseignant..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
           <div style={{ display: 'grid', gap: '16px', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
-            {[...teachers].sort((a,b) => a.name.localeCompare(b.name)).map((teacher) => (
+            {[...teachers]
+              .filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase()))
+              .sort((a,b) => a.name.localeCompare(b.name))
+              .map((teacher) => (
               <div key={teacher.id} style={{ padding: '16px', border: '1px solid var(--border-light)', borderRadius: '8px', background: '#F8FAFC' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
                   <div style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '16px' }}>{teacher.name}</div>
@@ -1576,11 +1592,21 @@ const Dashboard = () => {
             <span className="nav-icon">💳</span> Paiements
           </a>
           <div className="nav-group">
-            <a href="#" className={`nav-item ${activeTab.startsWith('settings') ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setIsSettingsOpen(!isSettingsOpen); }}>
+            <a 
+              href="#" 
+              className={`nav-item ${activeTab.startsWith('settings') ? 'active' : ''}`} 
+              onClick={(e) => { 
+                e.preventDefault(); 
+                if (isDirector) {
+                  setIsSettingsOpen(!isSettingsOpen); 
+                }
+              }}
+              style={!isDirector ? { opacity: 0.5, cursor: 'not-allowed', background: 'transparent' } : {}}
+            >
               <span className="nav-icon">⚙️</span> Paramètres
               <ChevronDown size={16} style={{ marginLeft: 'auto', transform: isSettingsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
             </a>
-            {isSettingsOpen && (
+            {isSettingsOpen && isDirector && (
               <div className="sub-nav animate-fade-in-up" style={{ paddingLeft: '40px', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
                 <a 
                   href="#" 

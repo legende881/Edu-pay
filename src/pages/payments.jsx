@@ -7,7 +7,16 @@ const PaymentsView = ({ currentFamilies }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [studentTransactions, setStudentTransactions] = useState([]);
+  const [allTransactions, setAllTransactions] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  React.useEffect(() => {
+    const fetchAllTx = async () => {
+      const { data, error } = await supabase.from('transactions').select('*').order('date', { ascending: false });
+      if (data) setAllTransactions(data);
+    };
+    fetchAllTx();
+  }, []);
 
   const handleOpenDetails = async (student) => {
     setSelectedStudent(student);
@@ -43,6 +52,12 @@ const PaymentsView = ({ currentFamilies }) => {
           if (amountPaid >= totalScolarite) status = 'soldes';
           else if (amountPaid > 0) status = 'partiels';
 
+          let lastRecordedBy = '-';
+          if (allTransactions.length > 0) {
+            const studentTx = allTransactions.find(t => t.student_id === child.id);
+            if (studentTx) lastRecordedBy = studentTx.recorded_by || 'Système';
+          }
+
           studentsList.push({
             id: child.id,
             name: child.name,
@@ -52,13 +67,14 @@ const PaymentsView = ({ currentFamilies }) => {
             totalScolarite,
             amountPaid,
             amountDue,
-            status
+            status,
+            lastRecordedBy
           });
         });
       }
     });
     return studentsList;
-  }, [currentFamilies]);
+  }, [currentFamilies, allTransactions]);
 
   // Compute KPIs
   const kpis = useMemo(() => {
@@ -183,6 +199,7 @@ const PaymentsView = ({ currentFamilies }) => {
                 <th style={{ textAlign: 'right' }}>Payé</th>
                 <th style={{ textAlign: 'right' }}>Reste</th>
                 <th style={{ textAlign: 'center' }}>Statut</th>
+                <th style={{ textAlign: 'right' }}>Enregistré par</th>
                 <th style={{ textAlign: 'right', paddingRight: '24px' }}>Action</th>
               </tr>
             </thead>
@@ -209,6 +226,10 @@ const PaymentsView = ({ currentFamilies }) => {
                     <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--color-primary-dark)' }}>{formatCurrency(student.amountPaid)}</td>
                     <td style={{ textAlign: 'right', fontWeight: 600, color: student.amountDue > 0 ? '#D97706' : 'var(--text-muted)' }}>{formatCurrency(student.amountDue)}</td>
                     <td style={{ textAlign: 'center' }}>{getStatusBadge(student.status)}</td>
+                    <td style={{ textAlign: 'right', fontSize: '13px', color: 'var(--text-muted)' }}>
+                       {student.lastRecordedBy !== '-' && <User size={12} style={{marginRight: '4px', verticalAlign: 'middle'}}/>}
+                       {student.lastRecordedBy}
+                    </td>
                     <td style={{ textAlign: 'right', paddingRight: '24px' }}>
                       <button 
                         className="btn-outline btn-sm" 
