@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, AlertCircle, Users, Activity, TrendingUp, Bell, Search, Lock, Unlock, ChevronDown, Settings, LogOut, Eye, Menu, X, Calendar, Crown } from 'lucide-react';
+import { DollarSign, AlertCircle, Users, Activity, TrendingUp, Bell, Search, Lock, Unlock, ChevronDown, Settings, LogOut, Eye, Menu, X, Calendar, Crown, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import StudentsList from './students';
 import PaymentsView from './payments';
@@ -1342,6 +1342,7 @@ const DashboardOverview = ({ stats, formatCurrency, onViewStudent, currentFamili
                  <th>Classe</th>
                  <th>Heure</th>
                  <th>Montant</th>
+                 <th>Enregistré par</th>
                  <th>Statut</th>
                  <th style={{ width: '40px' }}></th>
                </tr>
@@ -1360,6 +1361,12 @@ const DashboardOverview = ({ stats, formatCurrency, onViewStudent, currentFamili
                    <td>{payment.students?.grade}</td>
                    <td>{timeString}</td>
                    <td className="amount-cell">{payment.amount.toLocaleString()} FCFA</td>
+                   <td>
+                     <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                       <User size={12} />
+                       {payment.recorded_by || 'Directeur'}
+                     </span>
+                   </td>
                    <td><span className="badge badge-success">Validé</span></td>
                    <td style={{ textAlign: 'right' }}>
                      {/* onViewStudent n'est plus directement applicable sans familyId. On pourrait chercher familyId ou juste l'ignorer ici */}
