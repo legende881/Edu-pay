@@ -15,6 +15,22 @@ const Login = () => {
     setLoading(true);
     setError(null);
     try {
+      // 1. D'abord, vérifier si c'est un administrateur ajouté par le directeur (table 'admins')
+      const { data: adminData, error: adminError } = await supabase
+        .from('admins')
+        .select('*')
+        .eq('username', email)
+        .eq('password', password)
+        .single();
+
+      if (adminData) {
+        // C'est un administrateur !
+        localStorage.setItem('currentUser', JSON.stringify({ role: 'admin', name: adminData.username }));
+        navigate('/dashboard');
+        return;
+      }
+
+      // 2. Sinon, essayer l'authentification principale Supabase (Directeur)
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,

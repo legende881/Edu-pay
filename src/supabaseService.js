@@ -93,10 +93,17 @@ export const deleteFamilyFromSupabase = async (familyId) => {
 };
 
 export const addTransaction = async (transaction) => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    transaction.recorded_by = user.user_metadata?.name || user.email;
+  const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+  
+  if (currentUser.role === 'admin') {
+    transaction.recorded_by = currentUser.name || 'Administrateur';
+  } else {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      transaction.recorded_by = user.user_metadata?.name || user.email;
+    }
   }
+
   const { data, error } = await supabase.from('transactions').insert([transaction]);
   if (error) {
     console.error('Erreur lors de l\'ajout de la transaction:', error);
