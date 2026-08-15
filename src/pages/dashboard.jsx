@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, AlertCircle, Users, Activity, TrendingUp, Bell, Search, Lock, Unlock, ChevronDown, Settings, LogOut, Eye, Menu, X, Calendar, Crown, User } from 'lucide-react';
+import { DollarSign, AlertCircle, Users, Activity, TrendingUp, Bell, Search, Lock, Unlock, ChevronDown, Settings, LogOut, Eye, Menu, X, Calendar, Crown, User, Gift, Link, Share2, Copy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import StudentsList from './students';
 import PaymentsView from './payments';
@@ -599,6 +599,63 @@ const SettingsPersonal = () => {
           </div>
         </div>
       )}
+
+      {/* Referral Link Section */}
+      <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '32px', marginTop: '32px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          <div style={{ background: '#FEF2F2', color: '#EF4444', padding: '8px', borderRadius: '8px' }}>
+            <Gift size={20} />
+          </div>
+          <h3 style={{ margin: 0, fontSize: '18px' }}>Lien de parrainage</h3>
+        </div>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '14px' }}>
+          Partagez votre lien avec vos proches et vos amis afin de pouvoir bénéficier de 10% de réduction sur votre prochain abonnement.
+        </p>
+
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: '#F8FAFC', border: '1px solid var(--border-light)', borderRadius: '8px', padding: '10px 16px', gap: '12px', minWidth: '280px' }}>
+            <Link size={16} color="var(--text-muted)" />
+            <input 
+              type="text" 
+              readOnly 
+              value="https://edupay.app/invite/dir_xyz123" 
+              style={{ border: 'none', background: 'transparent', flex: 1, outline: 'none', color: 'var(--text-main)', fontSize: '14px' }} 
+            />
+          </div>
+          <button 
+            className="btn-outline" 
+            style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px' }}
+            onClick={() => {
+              navigator.clipboard.writeText('https://edupay.app/invite/dir_xyz123');
+              const btn = document.getElementById('copy-referral-btn');
+              if (btn) {
+                const originalText = btn.innerHTML;
+                btn.innerHTML = 'Copié !';
+                setTimeout(() => btn.innerHTML = originalText, 2000);
+              }
+              
+              // Simulation for demo: someone registers with the link 5 seconds after copying!
+              setTimeout(() => {
+                const event = new CustomEvent('simulateReferralRegistration');
+                window.dispatchEvent(event);
+              }, 5000);
+            }}
+            id="copy-referral-btn"
+          >
+            <Copy size={16} /> Copier le lien
+          </button>
+          
+          <a 
+            href={`https://wa.me/?text=${encodeURIComponent("Découvrez Edu-Pay, l'application de gestion scolaire. Inscrivez-vous avec mon lien pour avoir des réductions ! https://edupay.app/invite/dir_xyz123")}`} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="btn-primary" 
+            style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px', background: '#25D366', borderColor: '#25D366', textDecoration: 'none' }}
+          >
+            <Share2 size={16} /> Partager sur WhatsApp
+          </a>
+        </div>
+      </div>
     </div>
   );
 };
@@ -1433,7 +1490,23 @@ const Dashboard = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleReferral = () => {
+      setNotifications(prev => [{
+        id: Date.now(),
+        title: "Nouvelle inscription !",
+        message: "Quelqu'un s'est inscrit avec votre lien, l'inscription s'est bien passée, alors vous bénéficiez de 10% de réduction sur votre prochain abonnement.",
+        time: "À l'instant",
+        read: false
+      }, ...prev]);
+    };
+    window.addEventListener('simulateReferralRegistration', handleReferral);
+    return () => window.removeEventListener('simulateReferralRegistration', handleReferral);
+  }, []);
 
   // Premium Subscription state
   const [premiumState, setPremiumState] = useState(null);
@@ -1705,10 +1778,44 @@ const Dashboard = () => {
             )}
             
              <div className="header-actions">
-              <button className="icon-btn">
-                <Bell size={20} />
-                <span className="notification-dot"></span>
-              </button>
+              <div style={{ position: 'relative' }}>
+                <button className="icon-btn" onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}>
+                  <Bell size={20} />
+                  {notifications.filter(n => !n.read).length > 0 && (
+                    <span className="notification-dot" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold' }}>
+                      {notifications.filter(n => !n.read).length}
+                    </span>
+                  )}
+                </button>
+                {isNotificationsOpen && (
+                  <div style={{ position: 'absolute', top: '100%', right: '-50px', marginTop: '8px', background: 'white', border: '1px solid var(--border-light)', borderRadius: '8px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', width: '320px', zIndex: 100, overflow: 'hidden' }}>
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F8FAFC' }}>
+                      <h4 style={{ margin: 0, fontSize: '14px' }}>Notifications</h4>
+                      <button 
+                        style={{ background: 'none', border: 'none', fontSize: '12px', color: 'var(--color-primary)', cursor: 'pointer' }}
+                        onClick={() => setNotifications(notifications.map(n => ({...n, read: true})))}
+                      >
+                        Tout marquer comme lu
+                      </button>
+                    </div>
+                    <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                      {notifications.length === 0 ? (
+                        <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Aucune notification</div>
+                      ) : (
+                        notifications.map(n => (
+                          <div key={n.id} style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-light)', background: n.read ? 'white' : '#EFF6FF', cursor: 'pointer' }} onClick={() => setNotifications(notifications.map(notif => notif.id === n.id ? {...notif, read: true} : notif))}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                              <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-main)' }}>{n.title}</span>
+                              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{n.time}</span>
+                            </div>
+                            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>{n.message}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
               <div 
                 className="user-profile" 
                 style={{ position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
