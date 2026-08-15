@@ -97,39 +97,6 @@ const StudentsList = ({ initialActiveFamilyId }) => {
   }, [families, loadingFamilies]);
 
   const handleAddFamilies = (data) => {
-    if (data.id) {
-      // Modification d'une famille existante
-      setFamilies(families.map(f => {
-        if (f.id === data.id) {
-           const updatedChildren = f.children.map((existingChild, index) => {
-             const newData = data.children[index];
-             if (newData) {
-                return {
-                  ...existingChild,
-                  name: newData.name,
-                  grade: newData.grade,
-                  sex: newData.sex
-                };
-             }
-             return existingChild;
-           });
-           
-           return {
-             ...f,
-             parentName: data.parent.name,
-             parentWhatsapp: data.parent.whatsapp,
-             parentDirectCall: data.parent.directCall,
-             parentId: data.parent.id,
-             parentPassword: data.parent.password,
-             children: updatedChildren
-           };
-        }
-        return f;
-      }));
-      setEditingFamily(null);
-      return;
-    }
-
     const classTuitions = globalSettings.classTuitions || [
       { name: 'CP1', amount: 120000 },
       { name: 'CP2', amount: 120000 },
@@ -147,6 +114,69 @@ const StudentsList = ({ initialActiveFamilyId }) => {
       const found = classTuitions.find(ct => ct.name.toLowerCase().trim() === grade.toLowerCase().trim());
       return found ? found.amount : 120000; // Par défaut si classe non trouvée
     };
+
+    if (data.id) {
+      // Modification d'une famille existante
+      setFamilies(families.map(f => {
+        if (f.id === data.id) {
+           const updatedChildren = data.children.map((newData, index) => {
+             const existingChild = f.children[index];
+             
+             if (existingChild) {
+                // L'enfant existait déjà, on met à jour ses infos
+                return {
+                  ...existingChild,
+                  name: newData.name,
+                  grade: newData.grade,
+                  sex: newData.sex
+                };
+             } else {
+                // C'est un nouvel enfant ajouté pendant la modification de la famille !
+                const numTranches = parseInt(newData.tranches, 10) || 3;
+                const baseTuition = getTuitionForGrade(newData.grade);
+                const amountPerTranche = baseTuition / numTranches;
+                
+                const payments = Array.from({ length: numTranches }).map((_, i) => {
+                  const today = new Date();
+                  const deadline = new Date();
+                  deadline.setMonth(today.getMonth() + (i * 2) - 1); 
+          
+                  return {
+                    id: `pay-${Date.now()}-${index}-${i}`,
+                    title: `Tranche ${i+1}`,
+                    amountExpected: amountPerTranche,
+                    amountPaid: 0,
+                    deadline: deadline.toISOString(),
+                    isFullyPaid: false
+                  };
+                });
+          
+                return {
+                  id: `stu-${Date.now()}-${index}`,
+                  name: newData.name,
+                  grade: newData.grade,
+                  sex: newData.sex,
+                  totalAmount: baseTuition,
+                  payments: payments
+                };
+             }
+           });
+           
+           return {
+             ...f,
+             parentName: data.parent.name,
+             parentWhatsapp: data.parent.whatsapp,
+             parentDirectCall: data.parent.directCall,
+             parentId: data.parent.id,
+             parentPassword: data.parent.password,
+             children: updatedChildren
+           };
+        }
+        return f;
+      }));
+      setEditingFamily(null);
+      return;
+    }
 
     const newStudents = data.children.map((child, index) => {
       const numTranches = parseInt(child.tranches, 10);

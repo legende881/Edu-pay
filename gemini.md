@@ -7,7 +7,7 @@ EduPay est une application web (SaaS) conÃ§ue pour la gestion administrative, 
 
 ### Espace Directeur (Admin)
 - **Tableau de bord (Vue d'ensemble) :** Statistiques globales (Total Ã©lÃ¨ves, Taux de recouvrement, Paiements du jour).
-- **Gestion des Familles et Ã‰lÃ¨ves (`students.jsx`) :** Ajout de familles, affectation d'Ã©lÃ¨ves Ã  une classe, gÃ©nÃ©ration de reÃ§us de paiement (PDF) et partage via WhatsApp. Les dossiers familles sont triÃ©s automatiquement par ordre alphabÃ©tique.
+- **Gestion des Familles (Parents & Élèves liés) :** La structure centrale du projet n'est plus basée sur l'élève, mais sur la **Famille**. Un parent possède un `id` unique, un mot de passe généré automatiquement (sur la base de son prénom + 123), et une liste d'enfants. L'édition d'une famille permet d'ajouter de nouveaux enfants dynamiquement ; le système générera automatiquement leurs tranches de paiement respectives. Les dossiers familles sont triés automatiquement par ordre alphabétique.
 - **Gestion des Paiements (`payments.jsx`) :** Un tableau de bord SaaS dÃ©taillÃ© pour suivre les paiements (Montant recouvrÃ©, Reste Ã  recouvrer, Taux). Filtres interactifs (Tous, SoldÃ©s, Partiels, ImpayÃ©s). Liste triÃ©e alphabÃ©tiquement.
 - **Gestion des Enseignants (`SettingsTeachers` dans `dashboard.jsx`) :** CrÃ©ation des profils professeurs, affectation aux classes/matiÃ¨res/jours/heures de cours, gÃ©nÃ©ration de liens d'accÃ¨s, et vue triÃ©e par ordre alphabÃ©tique.
 - **ParamÃ©trages globaux :** Configuration des tranches de paiement, informations de contact (WhatsApp, Tmoney, Flooz), et configuration du compte directeur.
