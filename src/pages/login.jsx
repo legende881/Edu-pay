@@ -137,6 +137,8 @@ const Login = () => {
                 <a 
                   href="/EduPay_Setup.exe"
                   download
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="btn" 
                   style={{ flex: 1, padding: '12px', border: '1px solid var(--border-light)', color: 'var(--text-main)', background: 'white', borderRadius: 'var(--radius-md)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', textDecoration: 'none' }}
                 >
@@ -149,6 +151,8 @@ const Login = () => {
                 <a 
                   href="/EduPay_Android.apk"
                   download
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="btn" 
                   style={{ flex: 1, padding: '12px', border: '1px solid var(--border-light)', color: 'var(--text-main)', background: 'white', borderRadius: 'var(--radius-md)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', textDecoration: 'none' }}
                 >

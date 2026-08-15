@@ -25,6 +25,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['logo-pwa.jpg'],
+      workbox: {
+        navigateFallbackDenylist: [/^\/EduPay_Setup\.exe$/, /^\/EduPay_Android\.apk$/],
+      },
       manifest: {
         name: 'EduPay',
         short_name: 'EduPay',
