@@ -263,7 +263,7 @@ const TeacherDashboard = () => {
                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', color: 'var(--text-muted)', fontSize: '13px' }}>
                             <Clock size={14} style={{ marginTop: '2px' }} /> 
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                              <span style={{ background: '#FEF3C7', color: '#B45309', padding: '2px 8px', borderRadius: '12px', fontSize: '11px' }}>{assignment.hour}</span>
+                              <span style={{ background: '#FEF3C7', color: '#B45309', padding: '2px 8px', borderRadius: '12px', fontSize: '11px' }}>{assignment.day && assignment.day !== '-' ? assignment.day : 'Tous les jours'} - {assignment.hour}</span>
                             </div>
                          </div>
                       </div>

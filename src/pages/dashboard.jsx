@@ -1442,6 +1442,7 @@ const Dashboard = () => {
   const [selectedPlan, setSelectedPlan] = useState('monthly'); // 'monthly' or 'yearly'
   const [simPhoneNumber, setSimPhoneNumber] = useState('');
   const [simProcessing, setSimProcessing] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState(null); // For avatar crop from header
 
   // Profile State
   const [directorProfile, setDirectorProfile] = useState({
@@ -1713,11 +1714,39 @@ const Dashboard = () => {
                 style={{ position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               >
-                <img 
-                  src={currentUser.role === 'admin' ? 'https://i.pravatar.cc/150?u=admin' : directorProfile.photo} 
-                  alt="Profil" 
-                  style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-light)' }} 
-                />
+                <div style={{ position: 'relative' }}>
+                  <img 
+                    src={currentUser.role === 'admin' ? 'https://i.pravatar.cc/150?u=admin' : directorProfile.photo} 
+                    alt="Profil" 
+                    style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-light)' }} 
+                  />
+                  {currentUser.role === 'director' && (
+                    <div 
+                      style={{ position: 'absolute', bottom: -2, right: -2, background: 'var(--color-primary)', color: 'white', borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid white' }}
+                      onClick={(e) => { e.stopPropagation(); document.getElementById('header-photo-upload').click(); }}
+                      title="Modifier l'avatar"
+                    >
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                    </div>
+                  )}
+                </div>
+                {currentUser.role === 'director' && (
+                  <input 
+                    id="header-photo-upload" 
+                    type="file" 
+                    accept="image/*" 
+                    style={{ display: 'none' }} 
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => setImageToCrop(reader.result);
+                        reader.readAsDataURL(file);
+                      }
+                      e.target.value = '';
+                    }} 
+                  />
+                )}
                 <div className="user-info" style={{ display: 'flex', flexDirection: 'column' }}>
                   <span className="name" style={{ fontWeight: 600, fontSize: '14px' }}>
                     {currentUser.role === 'admin' ? currentUser.name : directorProfile.name}
@@ -1884,6 +1913,22 @@ const Dashboard = () => {
         </div>
       )}
 
+      {imageToCrop && (
+        <ImageCropper
+          imageSrc={imageToCrop}
+          onCropComplete={async (croppedImage) => {
+            const updatedProfile = { ...directorProfile, photo: croppedImage };
+            setDirectorProfile(updatedProfile);
+            setImageToCrop(null);
+            // Save to global settings
+            const { data: currentData } = await supabase.from('global_settings').select('data').eq('id', 1).single();
+            const settings = currentData?.data || {};
+            settings.directorProfile = updatedProfile;
+            await supabase.from('global_settings').upsert([{ id: 1, data: settings }]);
+          }}
+          onCancel={() => setImageToCrop(null)}
+        />
+      )}
     </div>
   );
 };
