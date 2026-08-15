@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Check, Clock, AlertCircle, ArrowLeft, Phone, MessageCircle, Trash2, Edit, Printer, Share2, Banknote, FileText, Users } from 'lucide-react';
+import { Plus, Check, Clock, AlertCircle, ArrowLeft, Phone, MessageCircle, Trash2, Edit, Printer, Share2, Banknote, FileText, Users, Search } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import AddStudentModal from '../components/AddStudentModal';
@@ -10,6 +10,7 @@ import { supabase } from '../supabaseClient';
 
 const StudentsList = ({ initialActiveFamilyId }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Initialisation du state avec Supabase
   const [families, setFamilies] = useState([]);
@@ -385,6 +386,8 @@ const StudentsList = ({ initialActiveFamilyId }) => {
     }
   };
 
+  const filteredFamilies = families.filter(f => f.parentName.toLowerCase().includes(searchQuery.toLowerCase()));
+
   // VUE DE DETAILS DU DOSSIER FAMILLE
   if (activeFamilyId) {
     const activeFamily = families.find(f => f.id === activeFamilyId);
@@ -609,23 +612,36 @@ const StudentsList = ({ initialActiveFamilyId }) => {
 
       {activeMainTab === 'familles' && (
         <>
-          <div className="section-header" style={{ borderBottom: 'none', padding: '0 0 24px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="section-header" style={{ borderBottom: 'none', padding: '0 0 24px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
             <div>
               <h2 style={{ fontSize: '24px', marginBottom: '8px' }}>Liste des Familles</h2>
               <p style={{ color: 'var(--text-muted)' }}>Consultez et gérez les dossiers des élèves.</p>
             </div>
-            <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
-              <Plus size={20} /> Ajouter une famille
-            </button>
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ width: '300px', position: 'relative' }}>
+                <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input 
+                  type="text" 
+                  className="search-input" 
+                  placeholder="Rechercher une famille..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{ width: '100%', padding: '10px 10px 10px 40px' }}
+                />
+              </div>
+              <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
+                <Plus size={20} /> Ajouter une famille
+              </button>
+            </div>
           </div>
 
       <div className="families-grid stagger-children" style={{ display: 'grid', gap: '24px', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
-        {families.length === 0 ? (
+        {filteredFamilies.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px', background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', gridColumn: '1 / -1', border: '1px solid var(--border-light)' }}>
-             <p style={{ color: 'var(--text-muted)' }}>Aucun dossier enregistré pour le moment. Cliquez sur "Ajouter une famille" pour commencer.</p>
+             <p style={{ color: 'var(--text-muted)' }}>{families.length === 0 ? 'Aucun dossier enregistré pour le moment. Cliquez sur "Ajouter une famille" pour commencer.' : 'Aucune famille ne correspond à votre recherche.'}</p>
           </div>
         ) : (
-          [...families].sort((a,b) => a.parentName.localeCompare(b.parentName, 'fr', { sensitivity: 'base' })).map(family => (
+          [...filteredFamilies].sort((a,b) => a.parentName.localeCompare(b.parentName, 'fr', { sensitivity: 'base' })).map(family => (
             <div key={family.id} className="student-card animate-fade-in-up" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '24px', position: 'relative' }}>
               <div style={{ position: 'absolute', top: '24px', right: '24px', display: 'flex', gap: '8px' }}>
                 <button 
