@@ -44,6 +44,13 @@ const StudentsList = ({ initialActiveFamilyId }) => {
     amount: ''
   });
 
+  const [paymentConfirmModal, setPaymentConfirmModal] = useState({
+    isOpen: false,
+    amount: 0,
+    actionType: null,
+    payload: null
+  });
+
   // Nouveaux states pour les Bulletins
   const [activeMainTab, setActiveMainTab] = useState('familles'); // 'familles' | 'bulletins'
   const [selectedBulletinClass, setSelectedBulletinClass] = useState(null);
@@ -234,16 +241,23 @@ const StudentsList = ({ initialActiveFamilyId }) => {
         alert("Action refusée. Code PIN incorrect.");
         return;
       }
+      executeManualPayment(addedAmount);
     } else {
-      const isConfirmed = window.confirm(`Êtes-vous sûr de vouloir enregistrer un paiement de ${addedAmount} FCFA ? Cette action est irréversible.`);
-      if (!isConfirmed) return;
+      setPaymentConfirmModal({
+        isOpen: true,
+        amount: addedAmount,
+        actionType: 'manual',
+        payload: { addedAmount }
+      });
     }
+  };
 
+  const executeManualPayment = (addedAmount) => {
     updatePayment(
       manualPaymentModal.familyId, 
       manualPaymentModal.studentId, 
       manualPaymentModal.trancheId, 
-      manualPaymentModal.amount
+      addedAmount
     );
     setManualPaymentModal({ ...manualPaymentModal, isOpen: false });
   };
@@ -351,40 +365,46 @@ const StudentsList = ({ initialActiveFamilyId }) => {
     }));
   };
 
-  const toggleFullPayment = (familyId, studentId, trancheId) => {
+  const handleTogglePaymentClick = (familyId, studentId, trancheId) => {
+    const family = families.find(f => f.id === familyId);
+    if (!family) return;
+    const student = family.children.find(s => s.id === studentId);
+    if (!student) return;
+    const payment = student.payments.find(p => p.id === trancheId);
+    if (!payment) return;
+    
+    const isPaid = !payment.isFullyPaid;
+    
+    if (!isPaid) {
+      const pin = window.prompt("Seul le directeur peut annuler un paiement. Entrez le code PIN Directeur :");
+      if (pin !== "1234") {
+        alert("Action refusée. Code PIN incorrect.");
+        return;
+      }
+      executeTogglePayment(familyId, studentId, trancheId, isPaid);
+    } else {
+      setPaymentConfirmModal({
+        isOpen: true,
+        amount: payment.amountExpected - payment.amountPaid,
+        actionType: 'toggle',
+        payload: { familyId, studentId, trancheId, isPaid }
+      });
+    }
+  };
+
+  const executeTogglePayment = (familyId, studentId, trancheId, isPaid) => {
     setFamilies(families.map(family => {
       if (family.id !== familyId) return family;
       
       const updatedChildren = family.children.map(student => {
         if (student.id !== studentId) return student;
-        
-        let paymentBlocked = false;
 
         const updatedPayments = student.payments.map(payment => {
           if (payment.id !== trancheId) return payment;
           
-          const isPaid = !payment.isFullyPaid;
-
-          if (!isPaid) {
-            // L'utilisateur essaie d'annuler un paiement existant
-            const pin = window.prompt("Seul le directeur peut annuler un paiement. Entrez le code PIN Directeur :");
-            if (pin !== "1234") {
-              alert("Action refusée. Code PIN incorrect.");
-              paymentBlocked = true;
-              return payment;
-            }
-          } else {
-            // L'utilisateur essaie d'enregistrer un paiement
-            const isConfirmed = window.confirm("Êtes-vous sûr de vouloir enregistrer ce paiement complet ? Cette action est irréversible.");
-            if (!isConfirmed) {
-              paymentBlocked = true;
-              return payment;
-            }
-          }
-          
           const finalAmountPaid = isPaid ? payment.amountExpected : 0;
-          
           const diff = finalAmountPaid - payment.amountPaid;
+          
           if (diff > 0) {
             addTransaction({
               id: `txn-${Date.now()}-${Math.floor(Math.random()*1000)}`,
@@ -393,7 +413,6 @@ const StudentsList = ({ initialActiveFamilyId }) => {
               amount: diff
             });
           } else if (diff < 0) {
-            // Transaction d'annulation (négative)
             addTransaction({
               id: `txn-${Date.now()}-${Math.floor(Math.random()*1000)}`,
               payment_id: payment.id,
@@ -408,10 +427,7 @@ const StudentsList = ({ initialActiveFamilyId }) => {
             isFullyPaid: isPaid
           };
         });
-
-        // Si l'action a été annulée, on ne modifie pas les paiements
-        if (paymentBlocked) return student;
-
+        
         return { ...student, payments: updatedPayments };
       });
       return { ...family, children: updatedChildren };
@@ -555,7 +571,7 @@ const StudentsList = ({ initialActiveFamilyId }) => {
                              <input 
                                type="checkbox" 
                                checked={payment.isFullyPaid} 
-                               onChange={() => toggleFullPayment(activeFamily.id, student.id, payment.id)}
+                               onChange={() => handleTogglePaymentClick(activeFamily.id, student.id, payment.id)}
                                className="tranche-checkbox"
                              />
                              <span style={{ fontWeight: 600 }}>{payment.title}</span>
@@ -743,6 +759,44 @@ const StudentsList = ({ initialActiveFamilyId }) => {
                   <button type="submit" className="btn-primary" style={{ flex: 1 }}>Enregistrer</button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {paymentConfirmModal.isOpen && (
+          <div className="modal-overlay">
+            <div className="modal-content animate-fade-in-up" style={{ maxWidth: '400px', width: '100%', padding: '32px', textAlign: 'center' }}>
+              <div style={{ background: 'var(--color-primary-50)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                <Check size={32} color="var(--color-primary)" />
+              </div>
+              <h3 style={{ marginBottom: '12px', fontSize: '20px' }}>Confirmation de paiement</h3>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '32px', lineHeight: 1.5, fontSize: '15px' }}>
+                Êtes-vous sûr de vouloir effectuer un paiement de <strong style={{ color: 'var(--text-main)', fontSize: '18px' }}>{paymentConfirmModal.amount.toLocaleString()} FCFA</strong> ?
+              </p>
+              <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+                <button 
+                  className="btn-outline" 
+                  style={{ flex: 1, padding: '12px' }} 
+                  onClick={() => setPaymentConfirmModal({ ...paymentConfirmModal, isOpen: false })}
+                >
+                  Non
+                </button>
+                <button 
+                  className="btn-primary" 
+                  style={{ flex: 1, padding: '12px' }} 
+                  onClick={() => {
+                    if (paymentConfirmModal.actionType === 'manual') {
+                      executeManualPayment(paymentConfirmModal.payload.addedAmount);
+                    } else if (paymentConfirmModal.actionType === 'toggle') {
+                      const p = paymentConfirmModal.payload;
+                      executeTogglePayment(p.familyId, p.studentId, p.trancheId, p.isPaid);
+                    }
+                    setPaymentConfirmModal({ isOpen: false, amount: 0, actionType: null, payload: null });
+                  }}
+                >
+                  Oui
+                </button>
+              </div>
             </div>
           </div>
         )}
