@@ -26,7 +26,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['logo-pwa.jpg'],
       workbox: {
-        navigateFallbackDenylist: [/^\/EduPay_Setup\.exe$/, /^\/EduPay_Android\.apk$/],
+        navigateFallbackDenylist: [/^\/EduPay_Setup\.exe$/, /^\/EduPay_Android\.apk$/, /^\/EduPay_iOS\.(zip|ipa)$/],
       },
       manifest: {
         name: 'EduPay',

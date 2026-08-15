@@ -35,7 +35,7 @@ EduPay est une application web (SaaS) conÃ§ue pour la gestion administrative, 
 - **State Management & Base de données :** React Hooks (`useState`, `useEffect`, `useMemo`) + **Supabase** (PostgreSQL, Authentification) pour persister la donnée de façon permanente. L'ancienne version sur `localStorage` a été migrée vers une architecture Fullstack.
 - **Routing :** React Router DOM.
 - **PWA (Progressive Web App) :** Intégration de `vite-plugin-pwa` pour permettre l'installation de l'application sur mobile Android sans passer par le Play Store.
-- **Téléchargements (Windows & Android) :** Ajout de boutons de téléchargement stylisés (avec logos officiels) pour l'exécutable Windows (`.exe`) et l'application Android (`.apk`) directement sur la page de connexion.
+- **Téléchargements (Windows, Android & iOS) :** Ajout de boutons de téléchargement stylisés (avec logos officiels) pour l'exécutable Windows (`.exe`), l'application Android (`.apk`), et l'archive iOS (`.zip`) directement sur la page de connexion. Les liens sont protégés du Service Worker via un target=_blank et navigateFallbackDenylist.
 
 ## 4. Structure des Fichiers
 
