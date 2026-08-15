@@ -89,6 +89,8 @@ const StudentsList = ({ initialActiveFamilyId }) => {
   }, [initialActiveFamilyId]);
   const [familyToDelete, setFamilyToDelete] = useState(null);
   const [editingFamily, setEditingFamily] = useState(null);
+  const [childToEdit, setChildToEdit] = useState(null);
+  const [childToDelete, setChildToDelete] = useState(null);
 
   // Sauvegarde automatique dans Supabase à chaque modification
   useEffect(() => {
@@ -386,6 +388,42 @@ const StudentsList = ({ initialActiveFamilyId }) => {
     }
   };
 
+  const confirmDeleteChild = () => {
+    if (childToDelete && activeFamilyId) {
+      setFamilies(families.map(f => {
+        if (f.id === activeFamilyId) {
+          return {
+            ...f,
+            children: f.children.filter(c => c.id !== childToDelete.id)
+          };
+        }
+        return f;
+      }));
+      setChildToDelete(null);
+    }
+  };
+
+  const handleSaveChildEdit = (e) => {
+    e.preventDefault();
+    if (childToEdit && activeFamilyId) {
+      setFamilies(families.map(f => {
+        if (f.id === activeFamilyId) {
+          return {
+            ...f,
+            children: f.children.map(c => {
+              if (c.id === childToEdit.id) {
+                return { ...c, name: childToEdit.name, grade: childToEdit.grade, sex: childToEdit.sex };
+              }
+              return c;
+            })
+          };
+        }
+        return f;
+      }));
+      setChildToEdit(null);
+    }
+  };
+
   const filteredFamilies = families.filter(f => {
     const term = (searchQuery || '').toLowerCase();
     const matchParent = f.parentName && f.parentName.toLowerCase().includes(term);
@@ -439,9 +477,14 @@ const StudentsList = ({ initialActiveFamilyId }) => {
                      <span className="badge" style={{ background: '#F1F5F9', color: 'var(--text-muted)', marginTop: '4px', display: 'inline-block' }}>{student.grade} • {student.sex}</span>
                    </div>
                  </div>
-                 <button className="icon-btn" title="Modifier l'élève" style={{ color: 'var(--text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-primary)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}>
-                   <Edit size={18} />
-                 </button>
+                 <div style={{ display: 'flex', gap: '8px' }}>
+                   <button onClick={() => setChildToEdit(student)} className="icon-btn" title="Modifier l'élève" style={{ color: 'var(--text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-primary)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}>
+                     <Edit size={18} />
+                   </button>
+                   <button onClick={() => setChildToDelete(student)} className="icon-btn" title="Supprimer l'élève" style={{ color: 'var(--text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#EF4444'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}>
+                     <Trash2 size={18} />
+                   </button>
+                 </div>
               </div>
               
               <div className="student-card-body">
@@ -737,6 +780,94 @@ const StudentsList = ({ initialActiveFamilyId }) => {
                 Oui, supprimer
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {childToDelete && (
+        <div className="modal-overlay">
+          <div className="modal-content animate-fade-in-up" style={{ maxWidth: '400px', width: '100%', padding: '32px', textAlign: 'center' }}>
+            <AlertCircle size={48} color="#EF4444" style={{ margin: '0 auto 16px' }} />
+            <h3 style={{ marginBottom: '12px' }}>Supprimer l'élève ?</h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '32px', lineHeight: 1.5 }}>
+              Voulez-vous vraiment supprimer cet élève ({childToDelete.name}) ? Cette action est irréversible.
+            </p>
+            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+              <button className="btn-outline" style={{ flex: 1 }} onClick={() => setChildToDelete(null)}>Annuler</button>
+              <button 
+                className="btn-primary" 
+                style={{ flex: 1, background: '#EF4444', border: 'none' }} 
+                onClick={confirmDeleteChild}
+              >
+                Oui, supprimer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {childToEdit && (
+        <div className="modal-overlay">
+          <div className="modal-content animate-fade-in-up" style={{ maxWidth: '400px', width: '100%', padding: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', color: 'var(--color-primary)' }}>
+              <div style={{ background: 'var(--color-primary-50)', padding: '12px', borderRadius: '50%' }}>
+                <Edit size={24} />
+              </div>
+              <h3 style={{ margin: 0 }}>Modifier l'élève</h3>
+            </div>
+            
+            <form onSubmit={handleSaveChildEdit} style={{ marginBottom: '24px' }}>
+              <div className="form-group">
+                <label className="form-label">Nom et Prénom</label>
+                <div className="search-input-wrapper">
+                  <input 
+                    type="text" 
+                    className="search-input" 
+                    required 
+                    value={childToEdit.name}
+                    onChange={(e) => setChildToEdit({...childToEdit, name: e.target.value})}
+                  />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Sexe</label>
+                <select className="search-input" required value={childToEdit.sex} onChange={(e) => setChildToEdit({...childToEdit, sex: e.target.value})}>
+                  <option value="M">Garçon</option>
+                  <option value="F">Fille</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Classe</label>
+                <select className="search-input" required value={childToEdit.grade} onChange={(e) => setChildToEdit({...childToEdit, grade: e.target.value})}>
+                  <option value="CEI1">CEI1</option>
+                  <option value="CEI2">CEI2</option>
+                  <option value="CP1">CP1</option>
+                  <option value="CP2">CP2</option>
+                  <option value="CE1">CE1</option>
+                  <option value="CE2">CE2</option>
+                  <option value="CM1">CM1</option>
+                  <option value="CM2">CM2</option>
+                  <option value="6ème">6ème</option>
+                  <option value="5ème">5ème</option>
+                  <option value="4ème">4ème</option>
+                  <option value="3ème">3ème</option>
+                  <option value="Seconde A">Seconde A</option>
+                  <option value="Seconde C">Seconde C</option>
+                  <option value="Seconde D">Seconde D</option>
+                  <option value="Première A">Première A</option>
+                  <option value="Première C">Première C</option>
+                  <option value="Première D">Première D</option>
+                  <option value="Terminale A">Terminale A</option>
+                  <option value="Terminale C">Terminale C</option>
+                  <option value="Terminale D">Terminale D</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                <button type="button" className="btn-outline" style={{ flex: 1 }} onClick={() => setChildToEdit(null)}>Annuler</button>
+                <button type="submit" className="btn-primary" style={{ flex: 1 }}>Enregistrer</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
