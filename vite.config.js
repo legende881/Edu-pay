@@ -37,14 +37,16 @@ export default defineConfig({
         display: 'standalone',
         icons: [
           {
-            src: 'logo-pwa.jpg',
+            src: 'icon.png',
             sizes: '192x192',
-            type: 'image/jpeg'
+            type: 'image/png',
+            purpose: 'any maskable'
           },
           {
-            src: 'logo-pwa.jpg',
+            src: 'icon.png',
             sizes: '512x512',
-            type: 'image/jpeg'
+            type: 'image/png',
+            purpose: 'any maskable'
           }
         ]
       }
