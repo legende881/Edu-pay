@@ -98,9 +98,17 @@ export const addTransaction = async (transaction) => {
   if (currentUser.role === 'admin') {
     transaction.recorded_by = currentUser.name || 'Administrateur';
   } else {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      transaction.recorded_by = user.user_metadata?.name || user.email;
+    // Si c'est le directeur, on récupère son nom de profil
+    const { data: settingsData } = await supabase.from('global_settings').select('data').eq('id', 1).single();
+    if (settingsData && settingsData.data && settingsData.data.directorProfile) {
+      transaction.recorded_by = settingsData.data.directorProfile.name;
+    } else {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        transaction.recorded_by = user.user_metadata?.name || user.email || 'Directeur';
+      } else {
+        transaction.recorded_by = 'Directeur';
+      }
     }
   }
 
