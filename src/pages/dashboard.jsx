@@ -3,6 +3,7 @@ import { DollarSign, AlertCircle, Users, Activity, TrendingUp, Bell, Search, Loc
 import { useNavigate } from 'react-router-dom';
 import StudentsList from './students';
 import PaymentsView from './payments';
+import ImageCropper from '../components/ImageCropper';
 import { supabase } from '../supabaseClient';
 import { getFamiliesNested, getTransactions } from '../supabaseService';
 
@@ -386,6 +387,7 @@ const SettingsPersonal = () => {
   
   const [adminToEdit, setAdminToEdit] = useState(null); // { originalEmail, email, password, id }
   const [adminToDelete, setAdminToDelete] = useState(null); // id string
+  const [imageToCrop, setImageToCrop] = useState(null); // For avatar crop
 
   const handleAddAdmin = async (e) => {
     e.preventDefault();
@@ -440,31 +442,47 @@ const SettingsPersonal = () => {
       
       <div style={{ maxWidth: '400px', marginBottom: '40px' }}>
         <div className="form-group" style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <img src={directorProfile.photo} alt="Profil" style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border-light)' }} />
-          {isDirector && (
-            <div>
-              <label htmlFor="photo-upload" className="btn-outline" style={{ padding: '6px 12px', fontSize: '13px', cursor: 'pointer', display: 'inline-block' }}>
-                Changer la photo
+          <div style={{ position: 'relative' }}>
+            <img src={directorProfile.photo} alt="Profil" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid white', boxShadow: 'var(--shadow-sm)' }} />
+            {isDirector && (
+              <label htmlFor="photo-upload" style={{ position: 'absolute', bottom: '0', right: '0', background: 'var(--color-primary)', color: 'white', border: '2px solid white', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: 'var(--shadow-sm)' }} title="Modifier l'avatar">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
               </label>
-              <input 
-                id="photo-upload" 
-                type="file" 
-                accept="image/*" 
-                style={{ display: 'none' }} 
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                      setDirectorProfile(prev => ({ ...prev, photo: reader.result }));
-                    };
-                    reader.readAsDataURL(file);
-                  }
-                }} 
-              />
-            </div>
-          )}
+            )}
+            <input 
+              id="photo-upload" 
+              type="file" 
+              accept="image/*" 
+              style={{ display: 'none' }} 
+              onChange={(e) => {
+                const file = e.target.files[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onloadend = () => {
+                    setImageToCrop(reader.result);
+                  };
+                  reader.readAsDataURL(file);
+                }
+                e.target.value = ''; // Reset to allow selecting the same file again
+              }} 
+            />
+          </div>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '18px' }}>{directorProfile.name}</h3>
+            <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{isDirector ? 'Directeur' : 'Administrateur'}</span>
+          </div>
         </div>
+        
+        {imageToCrop && (
+          <ImageCropper
+            imageSrc={imageToCrop}
+            onCropComplete={(croppedImage) => {
+              setDirectorProfile(prev => ({ ...prev, photo: croppedImage }));
+              setImageToCrop(null);
+            }}
+            onCancel={() => setImageToCrop(null)}
+          />
+        )}
         <div className="form-group" style={{ marginBottom: '16px' }}>
           <label className="form-label" style={{ display: 'block', fontWeight: 500, marginBottom: '8px' }}>Nom complet</label>
           <input type="text" className="search-input" value={directorProfile.name} onChange={e => setDirectorProfile({...directorProfile, name: e.target.value})} style={{ width: '100%', padding: '10px' }} disabled={!isDirector} />
