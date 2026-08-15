@@ -1539,58 +1539,8 @@ const Dashboard = () => {
              <Menu size={24} />
            </button>
            <div className="search-bar-container" style={{ position: 'relative' }}>
-             <div className="search-bar">
-               <Search size={18} color="#94A3B8" />
-               <input 
-                 type="text" 
-                 placeholder="Rechercher un élève, un parent..." 
-                 value={searchQuery}
-                 onChange={handleSearch}
-                 onFocus={() => { if(searchQuery) setShowSuggestions(true); }}
-                 onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-               />
-             </div>
-             
-             {showSuggestions && searchQuery && (
-               <div className="search-suggestions animate-fade-in-up" style={{
-                 position: 'absolute',
-                 top: '100%',
-                 left: 0,
-                 right: 0,
-                 marginTop: '8px',
-                 background: 'white',
-                 border: '1px solid var(--border-light)',
-                 borderRadius: '8px',
-                 boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                 zIndex: 1000,
-                 maxHeight: '300px',
-                 overflowY: 'auto'
-               }}>
-                 {searchResults.length > 0 ? (
-                   searchResults.map((result, idx) => (
-                     <div 
-                       key={idx} 
-                       style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-light)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }} 
-                       onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-app)'} 
-                       onMouseLeave={(e) => e.currentTarget.style.background = 'white'} 
-                       onClick={() => handleSuggestionClick(result)}
-                     >
-                        <div className="avatar-sm" style={{ background: result.type === 'parent' ? '#3B82F6' : 'var(--color-primary)', width: '32px', height: '32px', flexShrink: 0, fontSize: '14px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
-                           {result.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: 500, fontSize: '14px', color: 'var(--text-main)' }}>{result.name}</div>
-                          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{result.type === 'parent' ? 'Parent' : `Élève (Parent: ${result.parentName})`}</div>
-                        </div>
-                     </div>
-                   ))
-                 ) : (
-                   <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>Aucun résultat trouvé</div>
-                 )}
-               </div>
-             )}
-             
-            </div>
+             {/* L'ancienne barre de recherche globale a été supprimée */}
+           </div>
 
             {/* Premium Badge (Centered & Clickable) */}
             {premiumState && !premiumState.isPremium && (

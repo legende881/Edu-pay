@@ -646,7 +646,7 @@ const StudentsList = ({ initialActiveFamilyId }) => {
              <p style={{ color: 'var(--text-muted)' }}>{families.length === 0 ? 'Aucun dossier enregistré pour le moment. Cliquez sur "Ajouter une famille" pour commencer.' : 'Aucune famille ne correspond à votre recherche.'}</p>
           </div>
         ) : (
-          [...filteredFamilies].sort((a,b) => a.parentName.localeCompare(b.parentName, 'fr', { sensitivity: 'base' })).map(family => (
+          [...filteredFamilies].sort((a,b) => (a.parentName || '').localeCompare(b.parentName || '', 'fr', { sensitivity: 'base' })).map(family => (
             <div key={family.id} className="student-card animate-fade-in-up" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '24px', position: 'relative' }}>
               <div style={{ position: 'absolute', top: '24px', right: '24px', display: 'flex', gap: '8px' }}>
                 <button 
