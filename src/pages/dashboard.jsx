@@ -355,16 +355,29 @@ const SettingsPersonal = () => {
   const currentUser = savedUser ? JSON.parse(savedUser) : { role: 'director' };
   const isDirector = currentUser.role === 'director';
 
+  const [directorProfile, setDirectorProfile] = useState({
+    name: 'M. le Directeur',
+    email: 'directeur@ecole.com',
+    photo: 'https://i.pravatar.cc/150?u=director'
+  });
+
   const [adminsList, setAdminsList] = useState([]);
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    const fetchAdmins = async () => {
+    const fetchProfileAndAdmins = async () => {
+      // Profile
+      const { data: settingsData } = await supabase.from('global_settings').select('data').eq('id', 1).single();
+      if (settingsData && settingsData.data && settingsData.data.directorProfile) {
+        setDirectorProfile(settingsData.data.directorProfile);
+      }
+      
+      // Admins
       const { data, error } = await supabase.from('admins').select('*');
       if (data) setAdminsList(data);
       setLoading(false);
     };
-    fetchAdmins();
+    fetchProfileAndAdmins();
   }, []);
   
   const [newAdminEmail, setNewAdminEmail] = useState('');
@@ -426,16 +439,49 @@ const SettingsPersonal = () => {
       <p style={{ color: 'var(--text-muted)', marginBottom: '32px' }}>Gérez les informations de votre profil directeur.</p>
       
       <div style={{ maxWidth: '400px', marginBottom: '40px' }}>
+        <div className="form-group" style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <img src={directorProfile.photo} alt="Profil" style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border-light)' }} />
+          {isDirector && (
+            <div>
+              <label htmlFor="photo-upload" className="btn-outline" style={{ padding: '6px 12px', fontSize: '13px', cursor: 'pointer', display: 'inline-block' }}>
+                Changer la photo
+              </label>
+              <input 
+                id="photo-upload" 
+                type="file" 
+                accept="image/*" 
+                style={{ display: 'none' }} 
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      setDirectorProfile(prev => ({ ...prev, photo: reader.result }));
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }} 
+              />
+            </div>
+          )}
+        </div>
         <div className="form-group" style={{ marginBottom: '16px' }}>
           <label className="form-label" style={{ display: 'block', fontWeight: 500, marginBottom: '8px' }}>Nom complet</label>
-          <input type="text" className="search-input" defaultValue="M. le Directeur" style={{ width: '100%', padding: '10px' }} disabled={!isDirector} />
+          <input type="text" className="search-input" value={directorProfile.name} onChange={e => setDirectorProfile({...directorProfile, name: e.target.value})} style={{ width: '100%', padding: '10px' }} disabled={!isDirector} />
         </div>
         <div className="form-group" style={{ marginBottom: '24px' }}>
           <label className="form-label" style={{ display: 'block', fontWeight: 500, marginBottom: '8px' }}>Adresse Email</label>
-          <input type="email" className="search-input" defaultValue="directeur@ecole.com" style={{ width: '100%', padding: '10px' }} disabled={!isDirector} />
+          <input type="email" className="search-input" value={directorProfile.email} onChange={e => setDirectorProfile({...directorProfile, email: e.target.value})} style={{ width: '100%', padding: '10px' }} disabled={!isDirector} />
         </div>
         {isDirector && (
-          <button className="btn-primary" style={{ padding: '10px 24px' }} onClick={() => alert('Mise à jour effectuée (Simulation)')}>
+          <button className="btn-primary" style={{ padding: '10px 24px' }} onClick={async () => {
+             const { data: currentData } = await supabase.from('global_settings').select('data').eq('id', 1).single();
+             const settings = currentData?.data || {};
+             settings.directorProfile = directorProfile;
+             await supabase.from('global_settings').upsert([{ id: 1, data: settings }]);
+             alert('Profil mis à jour ! Le changement apparaîtra dans le menu en haut à droite.');
+             // Optional: window.location.reload() or propagate state.
+          }}>
             Mettre à jour mes informations
           </button>
         )}
@@ -1356,8 +1402,22 @@ const Dashboard = () => {
   const [simPhoneNumber, setSimPhoneNumber] = useState('');
   const [simProcessing, setSimProcessing] = useState(false);
 
+  // Profile State
+  const [directorProfile, setDirectorProfile] = useState({
+    name: 'M. le Directeur',
+    email: 'directeur@ecole.com',
+    photo: 'https://i.pravatar.cc/150?u=director'
+  });
+
   useEffect(() => {
-    const fetchPremiumStatus = async () => {
+    const fetchPremiumStatusAndProfile = async () => {
+      // 1. Fetch Profile (ID: 1)
+      const { data: profileData } = await supabase.from('global_settings').select('data').eq('id', 1).single();
+      if (profileData && profileData.data && profileData.data.directorProfile) {
+        setDirectorProfile(profileData.data.directorProfile);
+      }
+
+      // 2. Fetch Premium Status (ID: 3)
       const { data, error } = await supabase.from('global_settings').select('data').eq('id', 3).single();
       
       let currentPremiumSettings = null;
@@ -1372,7 +1432,6 @@ const Dashboard = () => {
       }
       
       const firstConn = new Date(currentPremiumSettings.firstConnectionDate);
-      // Replace time part to avoid hours issue
       const today = new Date();
       const diffTime = today.getTime() - firstConn.getTime();
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
@@ -1387,8 +1446,8 @@ const Dashboard = () => {
         }, 5000);
       }
     };
-    fetchPremiumStatus();
-  }, []);
+    fetchPremiumStatusAndProfile();
+  }, [activeTab]);
 
   const [stats, setStats] = useState({
     totalPaid: 0,
@@ -1593,21 +1652,29 @@ const Dashboard = () => {
               </div>
             )}
             
-            <div className="header-actions">
-             <button className="icon-btn">
-               <Bell size={20} />
-               <span className="notification-dot"></span>
-             </button>
-             <div 
-               className="user-profile" 
-               style={{ position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
-               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-             >
-               <img src="https://i.pravatar.cc/150?u=director" alt="Profil Directeur" style={{ width: '36px', height: '36px', borderRadius: '50%' }} />
-               <div className="user-info" style={{ display: 'flex', flexDirection: 'column' }}>
-                 <span className="name" style={{ fontWeight: 600, fontSize: '14px' }}>M. le Directeur</span>
-                 <span className="role" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Administrateur</span>
-               </div>
+             <div className="header-actions">
+              <button className="icon-btn">
+                <Bell size={20} />
+                <span className="notification-dot"></span>
+              </button>
+              <div 
+                className="user-profile" 
+                style={{ position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              >
+                <img 
+                  src={currentUser.role === 'admin' ? 'https://i.pravatar.cc/150?u=admin' : directorProfile.photo} 
+                  alt="Profil" 
+                  style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-light)' }} 
+                />
+                <div className="user-info" style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span className="name" style={{ fontWeight: 600, fontSize: '14px' }}>
+                    {currentUser.role === 'admin' ? currentUser.name : directorProfile.name}
+                  </span>
+                  <span className="role" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                    {currentUser.role === 'admin' ? 'Administrateur' : 'Directeur'}
+                  </span>
+                </div>
                <ChevronDown size={16} color="var(--text-muted)" style={{ marginLeft: '4px', transform: isDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
                
                {isDropdownOpen && (
