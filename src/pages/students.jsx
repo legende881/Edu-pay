@@ -613,6 +613,94 @@ const StudentsList = ({ initialActiveFamilyId }) => {
           </div>
         )}
 
+        {childToDelete && (
+          <div className="modal-overlay">
+            <div className="modal-content animate-fade-in-up" style={{ maxWidth: '400px', width: '100%', padding: '32px', textAlign: 'center' }}>
+              <AlertCircle size={48} color="#EF4444" style={{ margin: '0 auto 16px' }} />
+              <h3 style={{ marginBottom: '12px' }}>Supprimer l'élève ?</h3>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '32px', lineHeight: 1.5 }}>
+                Voulez-vous vraiment supprimer cet élève ({childToDelete.name}) ? Cette action est irréversible.
+              </p>
+              <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+                <button className="btn-outline" style={{ flex: 1 }} onClick={() => setChildToDelete(null)}>Annuler</button>
+                <button 
+                  className="btn-primary" 
+                  style={{ flex: 1, background: '#EF4444', border: 'none' }} 
+                  onClick={confirmDeleteChild}
+                >
+                  Oui, supprimer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {childToEdit && (
+          <div className="modal-overlay">
+            <div className="modal-content animate-fade-in-up" style={{ maxWidth: '400px', width: '100%', padding: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', color: 'var(--color-primary)' }}>
+                <div style={{ background: 'var(--color-primary-50)', padding: '12px', borderRadius: '50%' }}>
+                  <Edit size={24} />
+                </div>
+                <h3 style={{ margin: 0 }}>Modifier l'élève</h3>
+              </div>
+              
+              <form onSubmit={handleSaveChildEdit} style={{ marginBottom: '24px' }}>
+                <div className="form-group">
+                  <label className="form-label">Nom et Prénom</label>
+                  <div className="search-input-wrapper">
+                    <input 
+                      type="text" 
+                      className="search-input" 
+                      required 
+                      value={childToEdit.name}
+                      onChange={(e) => setChildToEdit({...childToEdit, name: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Sexe</label>
+                  <select className="search-input" required value={childToEdit.sex} onChange={(e) => setChildToEdit({...childToEdit, sex: e.target.value})}>
+                    <option value="M">Garçon</option>
+                    <option value="F">Fille</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Classe</label>
+                  <select className="search-input" required value={childToEdit.grade} onChange={(e) => setChildToEdit({...childToEdit, grade: e.target.value})}>
+                    <option value="CEI1">CEI1</option>
+                    <option value="CEI2">CEI2</option>
+                    <option value="CP1">CP1</option>
+                    <option value="CP2">CP2</option>
+                    <option value="CE1">CE1</option>
+                    <option value="CE2">CE2</option>
+                    <option value="CM1">CM1</option>
+                    <option value="CM2">CM2</option>
+                    <option value="6ème">6ème</option>
+                    <option value="5ème">5ème</option>
+                    <option value="4ème">4ème</option>
+                    <option value="3ème">3ème</option>
+                    <option value="Seconde A">Seconde A</option>
+                    <option value="Seconde C">Seconde C</option>
+                    <option value="Seconde D">Seconde D</option>
+                    <option value="Première A">Première A</option>
+                    <option value="Première C">Première C</option>
+                    <option value="Première D">Première D</option>
+                    <option value="Terminale A">Terminale A</option>
+                    <option value="Terminale C">Terminale C</option>
+                    <option value="Terminale D">Terminale D</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                  <button type="button" className="btn-outline" style={{ flex: 1 }} onClick={() => setChildToEdit(null)}>Annuler</button>
+                  <button type="submit" className="btn-primary" style={{ flex: 1 }}>Enregistrer</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
       </div>
     );
   }
@@ -784,133 +872,7 @@ const StudentsList = ({ initialActiveFamilyId }) => {
         </div>
       )}
 
-      {childToDelete && (
-        <div className="modal-overlay">
-          <div className="modal-content animate-fade-in-up" style={{ maxWidth: '400px', width: '100%', padding: '32px', textAlign: 'center' }}>
-            <AlertCircle size={48} color="#EF4444" style={{ margin: '0 auto 16px' }} />
-            <h3 style={{ marginBottom: '12px' }}>Supprimer l'élève ?</h3>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '32px', lineHeight: 1.5 }}>
-              Voulez-vous vraiment supprimer cet élève ({childToDelete.name}) ? Cette action est irréversible.
-            </p>
-            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
-              <button className="btn-outline" style={{ flex: 1 }} onClick={() => setChildToDelete(null)}>Annuler</button>
-              <button 
-                className="btn-primary" 
-                style={{ flex: 1, background: '#EF4444', border: 'none' }} 
-                onClick={confirmDeleteChild}
-              >
-                Oui, supprimer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {childToEdit && (
-        <div className="modal-overlay">
-          <div className="modal-content animate-fade-in-up" style={{ maxWidth: '400px', width: '100%', padding: '24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', color: 'var(--color-primary)' }}>
-              <div style={{ background: 'var(--color-primary-50)', padding: '12px', borderRadius: '50%' }}>
-                <Edit size={24} />
-              </div>
-              <h3 style={{ margin: 0 }}>Modifier l'élève</h3>
-            </div>
-            
-            <form onSubmit={handleSaveChildEdit} style={{ marginBottom: '24px' }}>
-              <div className="form-group">
-                <label className="form-label">Nom et Prénom</label>
-                <div className="search-input-wrapper">
-                  <input 
-                    type="text" 
-                    className="search-input" 
-                    required 
-                    value={childToEdit.name}
-                    onChange={(e) => setChildToEdit({...childToEdit, name: e.target.value})}
-                  />
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Sexe</label>
-                <select className="search-input" required value={childToEdit.sex} onChange={(e) => setChildToEdit({...childToEdit, sex: e.target.value})}>
-                  <option value="M">Garçon</option>
-                  <option value="F">Fille</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Classe</label>
-                <select className="search-input" required value={childToEdit.grade} onChange={(e) => setChildToEdit({...childToEdit, grade: e.target.value})}>
-                  <option value="CEI1">CEI1</option>
-                  <option value="CEI2">CEI2</option>
-                  <option value="CP1">CP1</option>
-                  <option value="CP2">CP2</option>
-                  <option value="CE1">CE1</option>
-                  <option value="CE2">CE2</option>
-                  <option value="CM1">CM1</option>
-                  <option value="CM2">CM2</option>
-                  <option value="6ème">6ème</option>
-                  <option value="5ème">5ème</option>
-                  <option value="4ème">4ème</option>
-                  <option value="3ème">3ème</option>
-                  <option value="Seconde A">Seconde A</option>
-                  <option value="Seconde C">Seconde C</option>
-                  <option value="Seconde D">Seconde D</option>
-                  <option value="Première A">Première A</option>
-                  <option value="Première C">Première C</option>
-                  <option value="Première D">Première D</option>
-                  <option value="Terminale A">Terminale A</option>
-                  <option value="Terminale C">Terminale C</option>
-                  <option value="Terminale D">Terminale D</option>
-                </select>
-              </div>
-
-              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-                <button type="button" className="btn-outline" style={{ flex: 1 }} onClick={() => setChildToEdit(null)}>Annuler</button>
-                <button type="submit" className="btn-primary" style={{ flex: 1 }}>Enregistrer</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      {manualPaymentModal.isOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content animate-fade-in-up" style={{ maxWidth: '400px', width: '100%', padding: '24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', color: 'var(--color-primary)' }}>
-              <div style={{ background: 'var(--color-primary-50)', padding: '12px', borderRadius: '50%' }}>
-                <Banknote size={24} />
-              </div>
-              <h3 style={{ margin: 0 }}>Paiement Manuel</h3>
-            </div>
-            
-            <div style={{ marginBottom: '24px' }}>
-              <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: 'var(--text-muted)' }}>
-                Élève : <strong style={{ color: 'var(--text-main)' }}>{manualPaymentModal.studentName}</strong>
-              </p>
-              <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: 'var(--text-muted)' }}>
-                Motif : <strong style={{ color: 'var(--text-main)' }}>{manualPaymentModal.trancheTitle}</strong>
-              </p>
-              
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Montant à ajouter (FCFA)</label>
-                <div className="search-input-wrapper">
-                  <input 
-                    type="number" 
-                    className="search-input" 
-                    placeholder="Ex: 50000" 
-                    value={manualPaymentModal.amount}
-                    onChange={(e) => setManualPaymentModal({...manualPaymentModal, amount: e.target.value})}
-                    autoFocus
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button className="btn-outline" style={{ flex: 1 }} onClick={() => setManualPaymentModal({...manualPaymentModal, isOpen: false})}>Annuler</button>
-              <button className="btn-primary" style={{ flex: 1 }} onClick={handleManualPaymentSubmit}>Ajouter l'encaissement</button>
-            </div>
-          </div>
-        </div>
-      )}
       </>
       )}
 
