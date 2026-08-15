@@ -1749,7 +1749,7 @@ const Dashboard = () => {
 
             {/* Premium Badge (Centered & Clickable) */}
             {premiumState && !premiumState.isPremium && (
-              <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', zIndex: 20 }}>
+              <div className="premium-badge-wrapper">
                 <button 
                   onClick={() => setShowPaymentSimulation(true)}
                   style={{
@@ -1772,7 +1772,7 @@ const Dashboard = () => {
                   onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)'; }}
                 >
                   <Crown size={16} color={premiumState.daysLeft > 5 ? '#D97706' : '#DC2626'} />
-                  Essai Gratuit - Reste {premiumState.daysLeft > 0 ? premiumState.daysLeft : 0} jour(s)
+                  <span className="premium-badge-text">Essai Gratuit - Reste {premiumState.daysLeft > 0 ? premiumState.daysLeft : 0} jour(s)</span>
                 </button>
               </div>
             )}

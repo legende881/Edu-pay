@@ -531,3 +531,25 @@ a { text-decoration: none; }
     background-color: #f0f0f0 !important;
   }
 }
+
+/* Responsive Premium Badge */
+.premium-badge-wrapper {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  z-index: 20;
+}
+
+@media (max-width: 768px) {
+  .premium-badge-wrapper {
+    position: static;
+    transform: none;
+    margin: 0 auto;
+    order: 2;
+  }
+  .premium-badge-text {
+    display: none;
+  }
+}
