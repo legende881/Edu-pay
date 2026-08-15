@@ -73,7 +73,9 @@ Edu-pay/
   - *Collège (6ème à 3ème) :* Bulletin au format **Portrait**, colonnes `1, 2, 3 (Devoirs)`. Les matières Philosophie, Allemand et Espagnol sont automatiquement masquées.
   - Le modèle Collège intègre des lignes de sous-totaux par groupe de matières, une ligne `Totaux` globale en bas de tableau, et un pied de page complexe à 4 colonnes calqué exactement sur le modèle physique (Retards, Félicitations, Décisions du conseil, etc.).
   - *Lycée (Seconde à Terminale) :* Ancien modèle au format **Paysage**, colonnes `Int, Dev, Comp`.
-  - La distinction s'effectue via la méthode `isCollege(grade)`.
+  - Pour les séries littéraires (ex: Séries A), toutes les matières s'affichent.
+  - Pour les séries scientifiques (classes contenant "C" ou "D" dans leur nom), les matières Allemand et Espagnol sont automatiquement masquées du bulletin, mais l'Anglais reste visible.
+  - La distinction s'effectue via la méthode `isCollege(grade)` et la nouvelle méthode `isScientificClass(grade)`.
 - **Observations Automatiques :** Dans les bulletins, les appréciations ("Faible", "Insuffisant", "Passable", "Assez-Bien", "Bien", "Très Bien") sont générées automatiquement en fonction de la moyenne générale de chaque matière, remplaçant ainsi les anciennes cases à cocher manuelles.
 
 ---

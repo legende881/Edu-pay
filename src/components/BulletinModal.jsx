@@ -46,10 +46,24 @@ const BulletinModal = ({
 
   const isCollegeStudent = isCollege(student.grade);
 
+  const isScientificClass = (grade) => {
+    if (!grade) return false;
+    const g = grade.toUpperCase();
+    return /\b[CD]\b/.test(g) || g.endsWith("C") || g.endsWith("D") || g.includes(" C ") || g.includes(" D ");
+  };
+
+  const isScientific = isScientificClass(student.grade);
+
   if (isCollegeStudent) {
     literarySubjects = literarySubjects.filter(
       (subj) =>
         !subj.toLowerCase().includes("philosophie") &&
+        !subj.toLowerCase().includes("allemand") &&
+        !subj.toLowerCase().includes("espagnol"),
+    );
+  } else if (isScientific) {
+    literarySubjects = literarySubjects.filter(
+      (subj) =>
         !subj.toLowerCase().includes("allemand") &&
         !subj.toLowerCase().includes("espagnol"),
     );
