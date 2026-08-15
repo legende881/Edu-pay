@@ -51,6 +51,14 @@ const StudentsList = ({ initialActiveFamilyId }) => {
     payload: null
   });
 
+  const [pinModal, setPinModal] = useState({
+    isOpen: false,
+    actionType: null,
+    payload: null,
+    enteredPin: '',
+    error: ''
+  });
+
   // Nouveaux states pour les Bulletins
   const [activeMainTab, setActiveMainTab] = useState('familles'); // 'familles' | 'bulletins'
   const [selectedBulletinClass, setSelectedBulletinClass] = useState(null);
@@ -236,12 +244,13 @@ const StudentsList = ({ initialActiveFamilyId }) => {
     const addedAmount = parseFloat(manualPaymentModal.amount) || 0;
     
     if (addedAmount <= 0) {
-      const pin = window.prompt("Seul le directeur peut annuler ou réduire un paiement. Entrez le code PIN Directeur :");
-      if (pin !== "1234") {
-        alert("Action refusée. Code PIN incorrect.");
-        return;
-      }
-      executeManualPayment(addedAmount);
+      setPinModal({
+        isOpen: true,
+        actionType: 'manual',
+        payload: { addedAmount },
+        enteredPin: '',
+        error: ''
+      });
     } else {
       setPaymentConfirmModal({
         isOpen: true,
@@ -250,6 +259,22 @@ const StudentsList = ({ initialActiveFamilyId }) => {
         payload: { addedAmount }
       });
     }
+  };
+
+  const handlePinConfirm = () => {
+    const requiredPin = globalSettings.directorPin || "1234";
+    if (pinModal.enteredPin !== requiredPin) {
+      setPinModal({ ...pinModal, error: "Code PIN incorrect." });
+      return;
+    }
+    
+    if (pinModal.actionType === 'manual') {
+      executeManualPayment(pinModal.payload.addedAmount);
+    } else if (pinModal.actionType === 'toggle') {
+      const p = pinModal.payload;
+      executeTogglePayment(p.familyId, p.studentId, p.trancheId, p.isPaid);
+    }
+    setPinModal({ isOpen: false, actionType: null, payload: null, enteredPin: '', error: '' });
   };
 
   const executeManualPayment = (addedAmount) => {
@@ -376,12 +401,13 @@ const StudentsList = ({ initialActiveFamilyId }) => {
     const isPaid = !payment.isFullyPaid;
     
     if (!isPaid) {
-      const pin = window.prompt("Seul le directeur peut annuler un paiement. Entrez le code PIN Directeur :");
-      if (pin !== "1234") {
-        alert("Action refusée. Code PIN incorrect.");
-        return;
-      }
-      executeTogglePayment(familyId, studentId, trancheId, isPaid);
+      setPinModal({
+        isOpen: true,
+        actionType: 'toggle',
+        payload: { familyId, studentId, trancheId, isPaid },
+        enteredPin: '',
+        error: ''
+      });
     } else {
       setPaymentConfirmModal({
         isOpen: true,
@@ -795,6 +821,52 @@ const StudentsList = ({ initialActiveFamilyId }) => {
                   }}
                 >
                   Oui
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {pinModal.isOpen && (
+          <div className="modal-overlay">
+            <div className="modal-content animate-fade-in-up" style={{ maxWidth: '400px', width: '100%', padding: '32px', textAlign: 'center' }}>
+              <div style={{ background: '#FEF2F2', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                <Lock size={32} color="#EF4444" />
+              </div>
+              <h3 style={{ marginBottom: '12px', fontSize: '20px' }}>Autorisation requise</h3>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '24px', lineHeight: 1.5, fontSize: '14px' }}>
+                Seul le directeur peut annuler ou réduire un paiement. Entrez le code PIN Directeur :
+              </p>
+              
+              <div style={{ marginBottom: '24px' }}>
+                <input 
+                  type="password" 
+                  value={pinModal.enteredPin}
+                  onChange={(e) => setPinModal({ ...pinModal, enteredPin: e.target.value, error: '' })}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handlePinConfirm(); }}
+                  style={{ width: '100%', padding: '12px', textAlign: 'center', letterSpacing: '4px', fontSize: '18px', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)' }}
+                  placeholder="••••"
+                  autoFocus
+                />
+                {pinModal.error && (
+                  <p style={{ color: '#EF4444', fontSize: '13px', marginTop: '8px' }}>{pinModal.error}</p>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+                <button 
+                  className="btn-outline" 
+                  style={{ flex: 1, padding: '12px' }} 
+                  onClick={() => setPinModal({ ...pinModal, isOpen: false })}
+                >
+                  Annuler
+                </button>
+                <button 
+                  className="btn-primary" 
+                  style={{ flex: 1, padding: '12px', background: '#EF4444', borderColor: '#EF4444' }} 
+                  onClick={handlePinConfirm}
+                >
+                  Valider
                 </button>
               </div>
             </div>

@@ -11,6 +11,7 @@ const SettingsPlan = () => {
   const [chatNumber, setChatNumber] = useState('+22890000000');
   const [yasNumber, setYasNumber] = useState('');
   const [floozNumber, setFloozNumber] = useState('');
+  const [directorPin, setDirectorPin] = useState('1234');
   const [classTuitions, setClassTuitions] = useState([
     { id: 1, name: 'CP1', amount: 120000 },
     { id: 2, name: 'CE1', amount: 120000 },
@@ -28,6 +29,7 @@ const SettingsPlan = () => {
         if (parsed.chatNumber) setChatNumber(parsed.chatNumber);
         if (parsed.yasNumber) setYasNumber(parsed.yasNumber);
         if (parsed.floozNumber) setFloozNumber(parsed.floozNumber);
+        if (parsed.directorPin) setDirectorPin(parsed.directorPin);
         if (parsed.classTuitions && parsed.classTuitions.length > 0) setClassTuitions(parsed.classTuitions);
       }
       setLoading(false);
@@ -57,6 +59,7 @@ const SettingsPlan = () => {
     settings.chatNumber = chatNumber;
     settings.yasNumber = yasNumber;
     settings.floozNumber = floozNumber;
+    settings.directorPin = directorPin;
     settings.classTuitions = classTuitions;
     
     await supabase.from('global_settings').upsert([{ id: 1, data: settings }]);
@@ -137,6 +140,24 @@ const SettingsPlan = () => {
           />
           <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '8px' }}>
             Les paiements Mobile Money effectués par les parents seront dirigés vers ces numéros respectifs via l'API.
+          </p>
+        </div>
+        
+        <div className="form-group" style={{ marginBottom: '24px' }}>
+          <label className="form-label" style={{ display: 'block', fontWeight: 500, marginBottom: '8px' }}>
+            Code PIN Directeur (Sécurité)
+          </label>
+          <input 
+            type="password" 
+            className="search-input" 
+            value={directorPin} 
+            onChange={(e) => setDirectorPin(e.target.value)}
+            placeholder="Ex: 1234"
+            maxLength={6}
+            style={{ width: '100%', padding: '10px', letterSpacing: '2px' }}
+          />
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '8px' }}>
+            Ce code est requis pour annuler ou modifier à la baisse un paiement déjà effectué.
           </p>
         </div>
         
