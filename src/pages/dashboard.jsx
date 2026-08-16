@@ -618,7 +618,7 @@ const SettingsPersonal = () => {
             <input 
               type="text" 
               readOnly 
-              value="https://edupay.app/invite/dir_xyz123" 
+              value={`${window.location.origin}${window.location.pathname}#/register/director?ref=dir_xyz123`} 
               style={{ border: 'none', background: 'transparent', flex: 1, outline: 'none', color: 'var(--text-main)', fontSize: '14px' }} 
             />
           </div>
@@ -626,7 +626,7 @@ const SettingsPersonal = () => {
             className="btn-outline" 
             style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px' }}
             onClick={() => {
-              navigator.clipboard.writeText('https://edupay.app/invite/dir_xyz123');
+              navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}#/register/director?ref=dir_xyz123`);
               const btn = document.getElementById('copy-referral-btn');
               if (btn) {
                 const originalText = btn.innerHTML;
