@@ -151,7 +151,7 @@ const Login = () => {
               {/* Boutons de téléchargement (Windows, Android & iOS) */}
               <div style={{ flex: '1 1 100%', marginTop: 'var(--space-2)', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <a 
-                  href="https://drive.google.com/file/d/1-2w1Nqh8BsjObwGR2tGKkV83NWyHQCcd/view?usp=sharing"
+                  href="https://drive.google.com/file/d/1m8BEhHPppISTDgEdftsYSZH4c9B9boXq/view?usp=sharing"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn" 
