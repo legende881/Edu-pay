@@ -295,7 +295,18 @@ const TeacherDashboard = () => {
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                   <div style={{ flex: '1 1 200px' }}>
                     <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, marginBottom: '8px' }}>Classe</label>
-                    <select className="search-input" value={selectedClass} onChange={e => { setSelectedClass(e.target.value); setSelectedStudentId(''); }} style={{ width: '100%', padding: '10px' }}>
+                    <select className="search-input" value={selectedClass} onChange={e => { 
+                      const newClass = e.target.value;
+                      setSelectedClass(newClass); 
+                      setSelectedStudentId(''); 
+                      if (newClass && assignments) {
+                        const match = assignments.find(a => a.class === newClass);
+                        if (match && match.subject && match.subject !== '-') {
+                          const subjectToSet = match.subject === 'Cours Primaire' ? 'Toutes les matières' : match.subject;
+                          setSelectedSubject(subjectToSet);
+                        }
+                      }
+                    }} style={{ width: '100%', padding: '10px' }}>
                       <option value="">Sélectionner une classe...</option>
                       {assignedClasses.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
