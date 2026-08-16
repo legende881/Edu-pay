@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { X, Printer } from "lucide-react";
+import { supabase } from "../supabaseClient";
 
 const BulletinModal = ({
   isOpen,
@@ -70,11 +71,33 @@ const BulletinModal = ({
   }
 
   const [localGrades, setLocalGrades] = useState({});
+  const [teachers, setTeachers] = useState([]);
 
   useEffect(() => {
     // initialize local editable grades from the passed grades
     setLocalGrades(grades || {});
   }, [grades]);
+
+  useEffect(() => {
+    const fetchTeachers = async () => {
+      const { data } = await supabase.from('teachers').select('name, assignments');
+      if (data) setTeachers(data);
+    };
+    fetchTeachers();
+  }, []);
+
+  const getTeacherForSubject = (subject) => {
+    if (!teachers || teachers.length === 0) return "";
+    const matchingTeacher = teachers.find(t => {
+      if (!t.assignments) return false;
+      return t.assignments.some(a => {
+        const classMatch = a.class === student.grade;
+        const subjectMatch = a.subject === subject || a.subject === '-';
+        return classMatch && subjectMatch;
+      });
+    });
+    return matchingTeacher ? matchingTeacher.name : "";
+  };
 
   const handleLocalGradeChange = (subject, type, value) => {
     setLocalGrades((prev) => ({
@@ -220,6 +243,7 @@ const BulletinModal = ({
 
   const renderHighSchoolSubjectRow = (subject) => {
     const stats = calculateHighSchoolRowStats(localGrades[subject]);
+    const teacherName = getTeacherForSubject(subject);
     return (
       <tr key={subject} style={{ borderBottom: "1px solid #000" }}>
         <td
@@ -325,8 +349,11 @@ const BulletinModal = ({
             borderRight: "1px solid #000",
             padding: "4px",
             fontSize: "10px",
+            textAlign: "center",
           }}
-        ></td>
+        >
+          {teacherName}
+        </td>
         <td style={{ padding: "4px", fontSize: "10px" }}></td>
       </tr>
     );
@@ -334,6 +361,7 @@ const BulletinModal = ({
 
   const renderCollegeSubjectRow = (subject) => {
     const stats = calculateCollegeRowStats(localGrades[subject]);
+    const teacherName = getTeacherForSubject(subject);
     return (
       <tr key={subject} style={{ borderBottom: "1px solid #000" }}>
         <td
@@ -432,8 +460,11 @@ const BulletinModal = ({
             borderRight: "1px solid #000",
             padding: "4px",
             fontSize: "10px",
+            textAlign: "center",
           }}
-        ></td>
+        >
+          {teacherName}
+        </td>
         <td
           style={{
             padding: "4px",
